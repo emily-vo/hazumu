@@ -61,6 +61,8 @@ public:
 	virtual void OnLeftButtonUp(UINT x, UINT y);
 	virtual void OnMouseMove(UINT x, UINT y);
 	virtual void OnMouseWheel(int delta);
+	virtual void OnMiddleButtonDown(UINT x, UINT y);
+	virtual void OnMiddleButtonUp(UINT x, UINT y);
 
     virtual void OnUpdate();
     virtual void OnRender();
@@ -147,18 +149,21 @@ private:
 
 	bool m_altDown;
 	bool m_lMouseDown;
+	bool m_mMouseDown;
 	int m_xClick;
 	int m_yClick;
 
 	float m_theta;
 	float m_phi;
 	float m_zoom;
+	bool m_sphereAnglesDirty;
 
     void EnableDirectXRaytracing(IDXGIAdapter1* adapter);
     void ParseCommandLineArgs(WCHAR* argv[], int argc);
     void UpdateCameraMatrices();
 	void UpdateCameraSphere();
     void InitializeScene();
+	void ResetCamera();
     void RecreateD3D();
     void DoRaytracing();
     void CreateConstantBuffers();

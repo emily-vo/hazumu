@@ -91,7 +91,7 @@ void D3D12RaytracingSimpleLighting::OnInit()
 // Update camera matrices passed into the shader.
 void D3D12RaytracingSimpleLighting::UpdateCameraMatrices()
 {
-	UpdateCameraSphere();
+	if (m_sphereAnglesDirty) UpdateCameraSphere();
     auto frameIndex = m_deviceResources->GetCurrentFrameIndex();
 
     m_sceneCB[frameIndex].cameraPosition = m_eye;
@@ -114,9 +114,12 @@ void D3D12RaytracingSimpleLighting::UpdateCameraSphere()
 	XMVECTOR xAxis = XMVectorSet(1, 0, 0, 0);
 	XMVECTOR yAxis = XMVectorSet(0, 1, 0, 0);
 	XMVECTOR zAxis = XMVectorSet(0, 0, 1, 0);
-	m_eye = XMVector3Transform(m_at, t);
-	m_at = XMVector4Transform(zAxis, t);
+	XMVECTOR unitEye{ 0.f, 0.f, 0.f, 1.f };
+	m_eye = XMVector3Transform(unitEye, t);
+	XMVECTOR forward = XMVector4Transform(zAxis, t);
+	//m_at = m_eye + forward;
 	m_up = XMVector4Transform(yAxis, t);
+	m_sphereAnglesDirty = false;
 }
 
 // Initialize scene rendering parameters.
@@ -134,6 +137,7 @@ void D3D12RaytracingSimpleLighting::InitializeScene()
 		m_theta = 0.f;
 		m_phi = 0.f;
 		m_zoom = -5.f;
+		m_sphereAnglesDirty = true;
 		m_ref = { 0.0f, 0.0f, 0.0f, 1.f };
         // Initialize the view and projection inverse matrices.
         m_eye = { 0.0f, 2.0f, -5.0f, 1.0f };
@@ -173,6 +177,23 @@ void D3D12RaytracingSimpleLighting::InitializeScene()
     {
         sceneCB = m_sceneCB[frameIndex];
     }
+}
+
+void D3D12RaytracingSimpleLighting::ResetCamera() {
+	m_theta = 0.f;
+	m_phi = 0.f;
+	m_zoom = -5.f;
+	m_sphereAnglesDirty = true;
+	m_ref = { 0.0f, 0.0f, 0.0f, 1.f };
+	// Initialize the view and projection inverse matrices.
+	m_eye = { 0.0f, 2.0f, -5.0f, 1.0f };
+	m_at = { 0.0f, 0.0f, 0.0f, 1.0f };
+	XMVECTOR right = { 1.0f, 0.0f, 0.0f, 0.0f };
+
+	XMVECTOR direction = XMVector4Normalize(m_at - m_eye);
+	m_up = XMVector3Normalize(XMVector3Cross(direction, right));
+
+	UpdateCameraMatrices();
 }
 
 // Create constant buffers.
@@ -814,6 +835,10 @@ void D3D12RaytracingSimpleLighting::OnKeyDown(UINT8 key)
 		m_altDown = true;
 		break;
 
+	case 'F':
+		ResetCamera();
+		break;
+
     default:
         break;
     }
@@ -861,14 +886,35 @@ void D3D12RaytracingSimpleLighting::OnMouseMove(UINT x, UINT y) {
 		if (m_theta < 0) { m_theta += 360; }
 		if (m_phi >= 360) { m_phi -= 360; }
 		if (m_phi < 0) { m_phi += 360; }
+		m_sphereAnglesDirty = true;
 		UpdateCameraMatrices();
+	} else if (m_mMouseDown) {
+		// Get camera right
+		XMVECTOR right = XMVector3Cross(m_at - m_eye, m_up);
+		XMVECTOR yTranslation = deltaY * m_up;
+		XMVECTOR xTranslation = deltaX * right / m_zoom;
+		XMVECTOR totalTranslation = xTranslation + yTranslation;
+		//m_at += totalTranslation;
+		//m_eye += totalTranslation;
+		//UpdateCameraMatrices();
 	}
 }
 
 void D3D12RaytracingSimpleLighting::OnMouseWheel(int delta) {
 	int factor = delta / 120;
-	m_zoom += factor;
+	m_zoom += factor * 3;
+	m_sphereAnglesDirty = true;
 	UpdateCameraMatrices();
+}
+
+void D3D12RaytracingSimpleLighting::OnMiddleButtonDown(UINT x, UINT y) {
+	m_mMouseDown = true;
+	m_xClick = x;
+	m_yClick = y;
+}
+
+void D3D12RaytracingSimpleLighting::OnMiddleButtonUp(UINT x, UINT y) {
+	m_mMouseDown = false;
 }
 
 // Update frame-based values.
