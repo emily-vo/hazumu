@@ -15,6 +15,7 @@
 #include "StepTimer.h"
 #include "RaytracingHlslCompat.h"
 #include "Mesh.h"
+#include "Model.h"
 
 namespace GlobalRootSignatureParams {
     enum Value {
@@ -174,7 +175,7 @@ private:
     void CreateDescriptorHeap();
     void CreateRaytracingOutputResource();
     void BuildGeometry();
-	void BuildMeshGeometry(Mesh &m);
+	void BuildModelGeometry(Model &m);
     void BuildAccelerationStructures();
     void BuildShaderTables();
     void SelectRaytracingAPI(RaytracingAPI type);

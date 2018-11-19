@@ -108,10 +108,8 @@ void D3D12RaytracingSimpleLighting::UpdateCameraSphere()
 	XMMATRIX thetaRotate = XMMatrixRotationY(XMConvertToRadians(m_theta));
 	XMMATRIX phiRotate = XMMatrixRotationX(XMConvertToRadians(m_phi));
 	XMMATRIX zoomTranslate = XMMatrixTranslation(0, 0, m_zoom);
-	XMMATRIX t = thetaRotate * phiRotate * zoomTranslate;
-	t = zoomTranslate * phiRotate * thetaRotate;
+	XMMATRIX t = zoomTranslate * phiRotate * thetaRotate;
 
-	XMVECTOR xAxis = XMVectorSet(1, 0, 0, 0);
 	XMVECTOR yAxis = XMVectorSet(0, 1, 0, 0);
 	XMVECTOR zAxis = XMVectorSet(0, 0, 1, 0);
 	m_eye = XMVector3Transform(m_at, t);
@@ -221,9 +219,9 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	auto m = Mesh::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
+	auto m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
-	BuildMeshGeometry(*m);
+	BuildModelGeometry(*m);
 
     // Build raytracing acceleration structures from the generated geometry.
     BuildAccelerationStructures();
@@ -518,18 +516,34 @@ void D3D12RaytracingSimpleLighting::BuildGeometry()
     ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
 }
 
-void D3D12RaytracingSimpleLighting::BuildMeshGeometry(Mesh &m) {
+void D3D12RaytracingSimpleLighting::BuildModelGeometry(Model &m) {
 
 	auto device = m_deviceResources->GetD3DDevice();
-
-	AllocateUploadBuffer(device, m.indices.data(), m.indices.size() * sizeof(Index), &m_indexBuffer.resource);
-	AllocateUploadBuffer(device, m.vertices.data(), m.vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+	int indexCount = 0;
+	int vertexCount = 0;
+	for (auto &mesh : m.meshes) {
+		indexCount += static_cast<int>(mesh->indices.size());
+		vertexCount += static_cast<int>(mesh->vertices.size());
+	}
+	std::vector<Index> masterIndices(indexCount);
+	std::vector<Vertex> masterVertices(vertexCount);
+	for (auto &mesh : m.meshes) {
+		int idxOffset = static_cast<int>(masterVertices.size());
+		for (auto &idx : mesh->indices) {
+			masterIndices.push_back(idx + idxOffset);
+		}
+		masterVertices.insert(masterVertices.end(), mesh->vertices.begin(), mesh->vertices.end());
+	}
+	
+	AllocateUploadBuffer(device, masterIndices.data(), masterIndices.size() * sizeof(Index), &m_indexBuffer.resource);
+	AllocateUploadBuffer(device, masterVertices.data(), masterVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
 
 	// Vertex buffer is passed to the shader along with index buffer as a descriptor table.
 	// Vertex buffer descriptor must follow index buffer descriptor in the descriptor heap.
-	UINT descriptorIndexIB = CreateBufferSRV(&m_indexBuffer, m.indices.size() * sizeof(Index) / 4, 0);
-	UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, m.vertices.size(), sizeof(Vertex));
+	UINT descriptorIndexIB = CreateBufferSRV(&m_indexBuffer, masterIndices.size() * sizeof(Index) / 4, 0);
+	UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, masterVertices.size(), sizeof(Vertex));
 	ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
+
 }
 
 // Build acceleration structures needed for raytracing.

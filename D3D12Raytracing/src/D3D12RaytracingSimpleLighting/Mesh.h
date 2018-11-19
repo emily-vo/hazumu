@@ -2,6 +2,8 @@
 
 #include "stdafx.h"
 #include "RaytracingHlslCompat.h"
+#include <assimp/scene.h>
+
 
 using namespace DirectX;
 using String = std::string;
@@ -9,8 +11,9 @@ using String = std::string;
 class Mesh {
 public:
 	Mesh(String name);
+	Mesh(Mesh &&other);
 
-	static std::unique_ptr<Mesh> LoadFromFile(const String &filename, const String &name);
+	static std::unique_ptr<Mesh> LoadFromAiMesh(aiMesh *mesh);
 
 	String name;
 	std::vector<Vertex> vertices;
