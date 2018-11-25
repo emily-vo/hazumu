@@ -17,6 +17,15 @@
 #include "Mesh.h"
 #include "Model.h"
 
+#define _WIN32_WINNT 0x600
+#include <stdio.h>
+
+#include <d3d11.h>
+#include <d3dcompiler.h>
+
+#pragma comment(lib,"d3d11.lib")
+#pragma comment(lib,"d3dcompiler.lib")
+
 namespace GlobalRootSignatureParams {
     enum Value {
         OutputViewSlot = 0,
@@ -190,4 +199,18 @@ private:
     UINT AllocateDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE* cpuDescriptor, UINT descriptorIndexToUse = UINT_MAX);
     UINT CreateBufferSRV(D3DBuffer* buffer, UINT numElements, UINT elementSize);
     WRAPPED_GPU_POINTER CreateFallbackWrappedPointer(ID3D12Resource* resource, UINT bufferNumElements);
+	HRESULT CompileComputeShader(_In_ LPCWSTR srcFile, _In_ LPCSTR entryPoint,
+		_In_ ID3D11Device* device, _Outptr_ ID3DBlob** blob);
+	int CompileComputeShaders();
 };
+
+inline std::wstring s2ws(const std::string &s) {
+	int len;
+	int slength = (int)s.length() + 1;
+	len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
+	wchar_t* buf = new wchar_t[len];
+	MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
+	std::wstring r(buf);
+	delete[] buf;
+	return r;
+}

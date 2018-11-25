@@ -96,5 +96,8 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Raytracing.hlsl" />
+    <FxCompile Include="ExampleCompute.hlsl">
+      <Filter>Assets\Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
