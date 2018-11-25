@@ -3,6 +3,7 @@
 #include "stdafx.h"
 #include "RaytracingHlslCompat.h"
 #include <assimp/scene.h>
+#include <assimp/Importer.hpp>
 #include "Mesh.h"
 
 using namespace DirectX;
@@ -53,6 +54,7 @@ public:
 		return mat;
 	}
 	String name;
-	aiScene *m_pScene;
+	std::unique_ptr<Assimp::Importer> sceneImporter;
+	const aiScene *m_pScene;
 	Mesh *m;
 };

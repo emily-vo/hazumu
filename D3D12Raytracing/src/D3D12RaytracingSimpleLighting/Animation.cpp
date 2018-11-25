@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "Animation.h"
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
 #include <DirectXMath.h>
 
 Animation::Animation(String name, Mesh *m) : name(name), m(m)
@@ -14,13 +16,13 @@ Animation::~Animation()
 // Load the animation into the mesh that is passed
 std::unique_ptr<Animation> Animation::LoadFromFile(String file, Mesh *m) {
 	auto anim = std::make_unique<Animation>(file, m);
-	Assimp::Importer importer;
-	const aiScene *scene = importer.ReadFile(file,
+	anim->sceneImporter = std::make_unique<Assimp::Importer>();
+	const aiScene *scene = anim->sceneImporter->ReadFile(file,
 		aiProcessPreset_TargetRealtime_MaxQuality
 	);
 
 	if (!scene) { throw std::exception("could not read file"); }
-
+	anim->m_pScene = scene;
 
 	return anim;
 }
@@ -209,3 +211,4 @@ void Animation::BoneTransform(float TimeInSeconds, std::vector<XMMATRIX>& Transf
 		Transforms[i] = m->m_BoneInfo[i].FinalTransformation;
 	}
 }
+

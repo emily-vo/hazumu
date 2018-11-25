@@ -243,6 +243,14 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
     //BuildGeometry();
 	auto m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
+	std::vector<std::unique_ptr<Animation>> anims;
+	for (int i = 0; i < m.get()->meshes.size(); i++) {
+		auto anim = Animation::LoadFromFile("../../../Resources/skinning_test.fbx", m.get()->meshes[i].get());
+		anims.push_back(std::move(anim));
+	}
+
+	std::vector<XMMATRIX> transforms;
+	anims[0].get()->BoneTransform(0.1f, transforms);
 	BuildModelGeometry(*m);
 
     // Build raytracing acceleration structures from the generated geometry.

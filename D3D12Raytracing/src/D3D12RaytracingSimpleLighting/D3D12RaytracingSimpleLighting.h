@@ -16,7 +16,7 @@
 #include "RaytracingHlslCompat.h"
 #include "Mesh.h"
 #include "Model.h"
-
+#include "Animation.h"
 #define _WIN32_WINNT 0x600
 #include <stdio.h>
 
