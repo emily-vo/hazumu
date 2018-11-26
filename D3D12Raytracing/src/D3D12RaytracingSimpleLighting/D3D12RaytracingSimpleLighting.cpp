@@ -241,7 +241,7 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	auto m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
+	m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
 	std::vector<std::unique_ptr<Animation>> anims;
 	for (int i = 0; i < m.get()->meshes.size(); i++) {
@@ -555,8 +555,8 @@ void D3D12RaytracingSimpleLighting::BuildModelGeometry(Model &m) {
 		indexCount += static_cast<int>(mesh->indices.size());
 		vertexCount += static_cast<int>(mesh->vertices.size());
 	}
-	std::vector<Index> masterIndices(indexCount);
-	std::vector<Vertex> masterVertices(vertexCount);
+	std::vector<Index> masterIndices;
+	std::vector<Vertex> masterVertices;
 	for (auto &mesh : m.meshes) {
 		int idxOffset = static_cast<int>(masterVertices.size());
 		for (auto &idx : mesh->indices) {
@@ -846,6 +846,105 @@ void D3D12RaytracingSimpleLighting::UpdateTopLevelAS() {
 	//m_deviceResources->WaitForGpu();
 }
 
+void D3D12RaytracingSimpleLighting::UpdateBottomLevelAS() {
+	auto device = m_deviceResources->GetD3DDevice();
+	auto commandList = m_deviceResources->GetCommandList();
+	auto commandQueue = m_deviceResources->GetCommandQueue();
+	auto commandAllocator = m_deviceResources->GetCommandAllocator();
+
+	// Reset the command list for the acceleration structure construction.
+	commandList->Reset(commandAllocator, nullptr);
+
+	D3D12_RAYTRACING_GEOMETRY_DESC geometryDesc = {};
+	geometryDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+	geometryDesc.Triangles.IndexBuffer = m_indexBuffer.resource->GetGPUVirtualAddress();
+	geometryDesc.Triangles.IndexCount = static_cast<UINT>(m_indexBuffer.resource->GetDesc().Width) / sizeof(Index);
+	geometryDesc.Triangles.IndexFormat = DXGI_FORMAT_R16_UINT;
+	geometryDesc.Triangles.Transform3x4 = 0;
+	geometryDesc.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+	geometryDesc.Triangles.VertexCount = static_cast<UINT>(m_vertexBuffer.resource->GetDesc().Width) / sizeof(Vertex);
+	geometryDesc.Triangles.VertexBuffer.StartAddress = m_vertexBuffer.resource->GetGPUVirtualAddress();
+	geometryDesc.Triangles.VertexBuffer.StrideInBytes = sizeof(Vertex);
+
+	// Mark the geometry as opaque. 
+	// PERFORMANCE TIP: mark geometry as opaque whenever applicable as it can enable important ray processing optimizations.
+	// Note: When rays encounter opaque geometry an any hit shader will not be executed whether it is present or not.
+	geometryDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
+
+	// Get required sizes for an acceleration structure.
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAGS buildFlags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE |
+		D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
+
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(m_bottomLevelAccelerationStructure.Get()));
+
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC bottomLevelBuildDesc = {};
+	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS &bottomLevelInputs = bottomLevelBuildDesc.Inputs;
+	bottomLevelInputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
+	bottomLevelInputs.Flags = buildFlags;
+	bottomLevelInputs.NumDescs = 1;
+	bottomLevelInputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
+	bottomLevelInputs.pGeometryDescs = &geometryDesc;
+
+	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO bottomLevelPrebuildInfo = {};
+	if (m_raytracingAPI == RaytracingAPI::FallbackLayer) {
+		m_fallbackDevice->GetRaytracingAccelerationStructurePrebuildInfo(&bottomLevelInputs, &bottomLevelPrebuildInfo);
+	} else // DirectX Raytracing
+	{
+		m_dxrDevice->GetRaytracingAccelerationStructurePrebuildInfo(&bottomLevelInputs, &bottomLevelPrebuildInfo);
+	}
+	ThrowIfFalse(bottomLevelPrebuildInfo.ResultDataMaxSizeInBytes > 0);
+
+	ComPtr<ID3D12Resource> scratchResource;
+	AllocateUAVBuffer(device, bottomLevelPrebuildInfo.ScratchDataSizeInBytes, &scratchResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, L"ScratchResource");
+
+	bottomLevelBuildDesc.DestAccelerationStructureData = m_bottomLevelAccelerationStructure->GetGPUVirtualAddress();
+	bottomLevelBuildDesc.SourceAccelerationStructureData = m_bottomLevelAccelerationStructure->GetGPUVirtualAddress();
+	bottomLevelBuildDesc.ScratchAccelerationStructureData = scratchResource->GetGPUVirtualAddress();
+
+	auto BuildAccelerationStructure = [&](auto* raytracingCommandList) {
+		raytracingCommandList->BuildRaytracingAccelerationStructure(&bottomLevelBuildDesc, 0, nullptr);
+	};
+
+	// Build acceleration structure.
+	if (m_raytracingAPI == RaytracingAPI::FallbackLayer) {
+		// Set the descriptor heaps to be used during acceleration structure build for the Fallback Layer.
+		ID3D12DescriptorHeap *pDescriptorHeaps[] = { m_descriptorHeap.Get() };
+		m_fallbackCommandList->SetDescriptorHeaps(ARRAYSIZE(pDescriptorHeaps), pDescriptorHeaps);
+		BuildAccelerationStructure(m_fallbackCommandList.Get());
+	} else // DirectX Raytracing
+	{
+		BuildAccelerationStructure(m_dxrCommandList.Get());
+	}
+
+	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(m_bottomLevelAccelerationStructure.Get()));
+
+	//commandList->Close();
+
+	//// Kick off acceleration structure construction.
+	m_deviceResources->ExecuteCommandList();
+
+	//// Wait for GPU to finish as the locally created temporary GPU resources will get released once we go out of scope.
+	m_deviceResources->WaitForGpu();
+}
+
+void D3D12RaytracingSimpleLighting::FakeSkinTest() {
+	static float elapsedTime = 0;
+	XMMATRIX rot = XMMatrixRotationY(XMConvertToRadians((elapsedTime / 24.f) * 360.f));
+	std::vector<Vertex> newVertices;
+	for (auto &mesh : m->meshes) {
+		for (auto &v : mesh->vertices) {
+			XMFLOAT3 pos3;
+			auto pos = XMVector3Transform(XMLoadFloat3(&v.position), rot);
+			XMStoreFloat3(&pos3, pos);
+			newVertices.push_back({ pos3, v.normal });
+		}
+	}
+	elapsedTime += m_timer.GetElapsedSeconds();
+	auto device = m_deviceResources->GetD3DDevice();
+	//m_vertexBuffer.resource.Reset();
+	AllocateUploadBuffer(device, newVertices.data(), newVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+}
+
 // Build shader tables.
 // This encapsulates all shader records - shaders and the arguments for their local root signatures.
 void D3D12RaytracingSimpleLighting::BuildShaderTables()
@@ -1048,6 +1147,8 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
     auto frameIndex = m_deviceResources->GetCurrentFrameIndex();
     auto prevFrameIndex = m_deviceResources->GetPreviousFrameIndex();
 
+	FakeSkinTest();
+	UpdateBottomLevelAS();
 	UpdateTopLevelAS();
 
     // Rotate the camera around Y axis.

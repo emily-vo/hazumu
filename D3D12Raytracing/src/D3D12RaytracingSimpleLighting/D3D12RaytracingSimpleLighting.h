@@ -200,6 +200,9 @@ private:
 	void SwapGeometryBuffers();
     void BuildAccelerationStructures();
 	void UpdateTopLevelAS();
+	void UpdateBottomLevelAS();
+	std::unique_ptr<Model> m;
+	void FakeSkinTest();
     void BuildShaderTables();
     void SelectRaytracingAPI(RaytracingAPI type);
     void UpdateForSizeChange(UINT clientWidth, UINT clientHeight);
