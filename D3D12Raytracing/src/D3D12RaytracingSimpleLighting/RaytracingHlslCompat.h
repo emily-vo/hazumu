@@ -41,4 +41,33 @@ struct Vertex
     XMFLOAT3 normal;
 };
 
+struct BoneInfo
+{
+	XMMATRIX BoneOffset;
+	XMMATRIX FinalTransformation;
+};
+
+struct VertexBoneData
+{
+	int IDs[4];
+	float Weights[4];
+	void Init() {
+		for (int i = 0; i < 4; i++) {
+			IDs[i] = -1;
+			Weights[i] = 0;
+		}
+	}
+
+	void AddBoneData(UINT BoneID, float Weight) {
+		for (int i = 0; i < 4; i++) {
+			if (Weights[i] == 0) {
+				IDs[i] = BoneID;
+				Weights[i] = Weight;
+				return;
+			}
+		}
+	}
+
+};
+
 #endif // RAYTRACINGHLSLCOMPAT_H

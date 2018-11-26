@@ -25,6 +25,6 @@ std::unique_ptr<Model> Model::LoadFromFile(const String &filename, const String 
 			m->meshes.push_back(std::move(mesh));
 		}
 	}
+	importer.FreeScene();
 	return m;
-
 }

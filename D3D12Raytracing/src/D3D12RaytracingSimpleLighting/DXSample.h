@@ -15,6 +15,7 @@
 #include "Win32Application.h"
 #include "DeviceResources.h"
 
+
 class DXSample : public DX::IDeviceNotify
 {
 public:

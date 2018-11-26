@@ -7,7 +7,9 @@
 Mesh::Mesh(String name) :
 	name(name),
 	vertices(),
-	indices() {}
+	indices() {
+	m_GlobalInverseTransform = XMMatrixIdentity();
+}
 
 Mesh::Mesh(Mesh &&other) :
 	name(std::move(other.name)),
@@ -40,6 +42,30 @@ std::unique_ptr<Mesh> Mesh::LoadFromAiMesh(aiMesh *mesh) {
 	}
 
 	// Load skeleton information
+	m->mBones.resize(m->vertices.size());
+	//m->m_BoneInfo.resize(currMesh->mNumBones);
+	for (UINT i = 0; i < currMesh->mNumBones; i++) {
+		UINT BoneIndex = 0;
+		String BoneName(currMesh->mBones[i]->mName.data);
 
+		if (m->m_BoneMapping.find(BoneName) == m->m_BoneMapping.end()) {
+			BoneIndex = m->m_NumBones;
+			m->m_NumBones++;
+			BoneInfo bi;
+			m->m_BoneInfo.push_back(bi);
+		}
+		else {
+			BoneIndex = m->m_BoneMapping[BoneName];
+		}
+
+		m->m_BoneMapping[BoneName] = BoneIndex;
+		m->m_BoneInfo[BoneIndex].BoneOffset = m->aiMatToXMMatrix(currMesh->mBones[i]->mOffsetMatrix);
+
+		for (UINT j = 0; j < currMesh->mBones[i]->mNumWeights; j++) {
+			UINT VertexID = currMesh->mBones[i]->mWeights[j].mVertexId;
+			float Weight = currMesh->mBones[i]->mWeights[j].mWeight;
+			m->mBones[VertexID].AddBoneData(BoneIndex, Weight);
+		}
+	}
 	return m;
 }
