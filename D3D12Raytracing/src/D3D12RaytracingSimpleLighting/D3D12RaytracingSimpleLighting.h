@@ -120,9 +120,16 @@ private:
     D3DBuffer m_indexBuffer;
     D3DBuffer m_vertexBuffer;
 
+	// Buffers for swapping
+	D3DBuffer m_indexBufferSwap;
+	D3DBuffer m_vertexBufferSwap;
+	UINT64 numIdxBytes;
+	UINT64 numVtxBytes;
+
     // Acceleration structure
     ComPtr<ID3D12Resource> m_bottomLevelAccelerationStructure;
     ComPtr<ID3D12Resource> m_topLevelAccelerationStructure;
+	ComPtr<ID3D12Resource> m_scratchUpdateASResource;
 
     // Raytracing output
     ComPtr<ID3D12Resource> m_raytracingOutput;
@@ -181,7 +188,9 @@ private:
     void CreateRaytracingOutputResource();
     void BuildGeometry();
 	void BuildModelGeometry(Model &m);
+	void SwapGeometryBuffers();
     void BuildAccelerationStructures();
+	void UpdateTopLevelAS();
     void BuildShaderTables();
     void SelectRaytracingAPI(RaytracingAPI type);
     void UpdateForSizeChange(UINT clientWidth, UINT clientHeight);
