@@ -241,16 +241,13 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	auto m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
+	m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
-	std::vector<std::unique_ptr<Animation>> anims;
 	for (int i = 0; i < m.get()->meshes.size(); i++) {
 		auto anim = Animation::LoadFromFile("../../../Resources/skinning_test.fbx", m.get()->meshes[i].get());
 		anims.push_back(std::move(anim));
 	}
 
-	std::vector<XMMATRIX> transforms;
-	anims[0].get()->BoneTransform(0.1f, transforms);
 	BuildModelGeometry(*m);
 
     // Build raytracing acceleration structures from the generated geometry.
@@ -555,8 +552,8 @@ void D3D12RaytracingSimpleLighting::BuildModelGeometry(Model &m) {
 		indexCount += static_cast<int>(mesh->indices.size());
 		vertexCount += static_cast<int>(mesh->vertices.size());
 	}
-	std::vector<Index> masterIndices(indexCount);
-	std::vector<Vertex> masterVertices(vertexCount);
+	std::vector<Index> masterIndices;
+	std::vector<Vertex> masterVertices;
 	for (auto &mesh : m.meshes) {
 		int idxOffset = static_cast<int>(masterVertices.size());
 		for (auto &idx : mesh->indices) {
@@ -1039,6 +1036,36 @@ void D3D12RaytracingSimpleLighting::OnMiddleButtonUp(UINT x, UINT y) {
 	m_mMouseDown = false;
 }
 
+void D3D12RaytracingSimpleLighting::Skin() {
+	std::vector<Vertex> newVertices;
+	for (int i = 0; i < anims.size(); i++) {
+		auto &a = anims[i];
+		std::vector<XMMATRIX> boneTransforms;
+		a->BoneTransform(currentTime, boneTransforms);
+		auto &mesh = m->meshes[i];
+		for (int j = 0; j < mesh->vertices.size(); j++) {
+			auto &v = mesh->vertices[j];
+			auto &b = mesh->mBones[j];
+			XMVECTOR pos = XMVectorZero();
+			XMVECTOR norm = XMVectorZero();
+			for (int k = 0; k < 4; k++) {
+				int ID = b.IDs[k];
+				float weight = b.Weights[k];
+				XMMATRIX mat = boneTransforms[ID];
+				pos += XMVector4Transform(XMLoadFloat3(&(v.position)), mat);
+				norm += XMVector3Transform(XMLoadFloat3(&(v.normal)), mat);
+			}
+			XMFLOAT3 pos3, nor3;
+			XMStoreFloat3(&pos3, pos);
+			XMStoreFloat3(&nor3, norm);
+			newVertices.push_back(Vertex{ pos3, nor3 });
+		}
+	}
+	auto device = m_deviceResources->GetD3DDevice();
+	AllocateUploadBuffer(device, newVertices.data(), newVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+	currentTime += dt;
+}
+
 // Update frame-based values.
 void D3D12RaytracingSimpleLighting::OnUpdate()
 {
@@ -1047,7 +1074,7 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
     float elapsedTime = static_cast<float>(m_timer.GetElapsedSeconds());
     auto frameIndex = m_deviceResources->GetCurrentFrameIndex();
     auto prevFrameIndex = m_deviceResources->GetPreviousFrameIndex();
-
+	Skin();
 	UpdateTopLevelAS();
 
     // Rotate the camera around Y axis.

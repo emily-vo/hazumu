@@ -164,6 +164,13 @@ private:
     XMVECTOR m_up;
 	XMVECTOR m_ref;
 
+	// Animation data
+	float dt = 0.2;
+	float currentTime = 0;
+	std::vector<std::unique_ptr<Animation>> anims;
+
+	// Model data
+	std::unique_ptr<Model> m;
 	bool m_altDown;
 	bool m_lMouseDown;
 	bool m_mMouseDown;
@@ -211,6 +218,7 @@ private:
 	HRESULT CompileComputeShader(_In_ LPCWSTR srcFile, _In_ LPCSTR entryPoint,
 		_In_ ID3D11Device* device, _Outptr_ ID3DBlob** blob);
 	int CompileComputeShaders();
+	void Skin();
 };
 
 inline std::wstring s2ws(const std::string &s) {

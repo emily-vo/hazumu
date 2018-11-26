@@ -23,7 +23,7 @@ std::unique_ptr<Animation> Animation::LoadFromFile(String file, Mesh *m) {
 
 	if (!scene) { throw std::exception("could not read file"); }
 	anim->m_pScene = scene;
-
+	m->m_GlobalInverseTransform = anim->aiMatToXMMatrix(scene->mRootNode->mTransformation.Inverse());
 	return anim;
 }
 
@@ -179,7 +179,7 @@ void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, cons
 		XMMATRIX TranslationM = XMMatrixTranslationFromVector({ Translation.x, Translation.y, Translation.z });
 
 		// Combine the above transformations
-		NodeTransformation = ScalingM * RotationM * TranslationM;
+		NodeTransformation = TranslationM * RotationM * ScalingM;
 	}
 
 	XMMATRIX GlobalTransformation = ParentTransform * NodeTransformation;

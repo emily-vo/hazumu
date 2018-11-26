@@ -45,13 +45,7 @@ public:
 	}
 
 	DirectX::XMMATRIX InitScaleTransform(const aiVector3D &a) const {
-		float arr[16] = {
-			a.x, 0, 0, 0,
-			0, a.y, 0, 0,
-			0, 0, a.z, 0,
-			0, 0, 0, 1 };
-		DirectX::XMMATRIX mat = DirectX::XMMATRIX(arr);
-		return mat;
+		return XMMatrixScaling(a.x, a.y, a.z);
 	}
 	String name;
 	std::unique_ptr<Assimp::Importer> sceneImporter;
