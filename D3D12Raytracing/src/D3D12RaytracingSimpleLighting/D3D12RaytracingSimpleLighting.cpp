@@ -1161,6 +1161,7 @@ void D3D12RaytracingSimpleLighting::Skin() {
 		}
 	}
 	auto device = m_deviceResources->GetD3DDevice();
+	m_vertexBuffer.resource.Reset();
 	AllocateUploadBuffer(device, newVertices.data(), newVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
 	currentTime += dt;
 }

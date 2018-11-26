@@ -179,14 +179,14 @@ void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, cons
 		XMMATRIX TranslationM = XMMatrixTranslationFromVector({ Translation.x, Translation.y, Translation.z });
 
 		// Combine the above transformations
-		NodeTransformation = TranslationM * RotationM * ScalingM;
+		NodeTransformation = ScalingM * RotationM * TranslationM;
 	}
 
-	XMMATRIX GlobalTransformation = ParentTransform * NodeTransformation;
+	XMMATRIX GlobalTransformation = NodeTransformation * ParentTransform;
 
 	if (m->m_BoneMapping.find(NodeName) != m->m_BoneMapping.end()) {
 		UINT BoneIndex = m->m_BoneMapping[NodeName];
-		m->m_BoneInfo[BoneIndex].FinalTransformation = m->m_GlobalInverseTransform * GlobalTransformation * m->m_BoneInfo[BoneIndex].BoneOffset;
+		m->m_BoneInfo[BoneIndex].FinalTransformation = m->m_BoneInfo[BoneIndex].BoneOffset * GlobalTransformation * m->m_GlobalInverseTransform ;
 	}
 
 	for (UINT i = 0; i < pNode->mNumChildren; i++) {
