@@ -208,7 +208,6 @@ private:
     void BuildAccelerationStructures();
 	void UpdateTopLevelAS();
 	void UpdateBottomLevelAS();
-	std::unique_ptr<Model> m;
 	void FakeSkinTest();
     void BuildShaderTables();
     void SelectRaytracingAPI(RaytracingAPI type);
