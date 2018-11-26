@@ -167,6 +167,8 @@ private:
 	// Animation data
 	float dt = 0.2;
 	float currentTime = 0;
+	float prevTime = 0;
+	float elapsedTime = 0;
 	std::vector<std::unique_ptr<Animation>> anims;
 
 	// Model data

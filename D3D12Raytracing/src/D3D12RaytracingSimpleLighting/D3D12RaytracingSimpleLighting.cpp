@@ -1140,20 +1140,29 @@ void D3D12RaytracingSimpleLighting::Skin() {
 	for (int i = 0; i < anims.size(); i++) {
 		auto &a = anims[i];
 		std::vector<XMMATRIX> boneTransforms;
-		a->BoneTransform(currentTime, boneTransforms);
+		a->BoneTransform(elapsedTime, boneTransforms);
 		auto &mesh = m->meshes[i];
 		for (int j = 0; j < mesh->vertices.size(); j++) {
 			auto &v = mesh->vertices[j];
 			auto &b = mesh->mBones[j];
 			XMVECTOR pos = XMVectorZero();
 			XMVECTOR norm = XMVectorZero();
+			float totalWeight = 0;
+			XMMATRIX transform = XMMatrixSet(0, 0, 0, 0,
+											 0, 0, 0, 0,
+											 0, 0, 0, 0,
+											 0, 0, 0, 0);
 			for (int k = 0; k < 4; k++) {
 				int ID = b.IDs[k];
 				float weight = b.Weights[k];
+				totalWeight += weight;
 				XMMATRIX mat = boneTransforms[ID];
-				pos += XMVector4Transform(XMLoadFloat3(&(v.position)), mat);
-				norm += XMVector3Transform(XMLoadFloat3(&(v.normal)), mat);
+				transform += boneTransforms[ID] * weight;
+				//pos += XMVector4Transform(XMLoadFloat3(&(v.position)), mat) * weight;
+				//norm += XMVector3Transform(XMLoadFloat3(&(v.normal)), mat) * weight;
 			}
+			pos = XMVector4Transform(XMLoadFloat3(&(v.position)), transform);
+			norm = XMVector3Transform(XMLoadFloat3(&(v.normal)), transform);
 			XMFLOAT3 pos3, nor3;
 			XMStoreFloat3(&pos3, pos);
 			XMStoreFloat3(&nor3, norm);
@@ -1161,9 +1170,9 @@ void D3D12RaytracingSimpleLighting::Skin() {
 		}
 	}
 	auto device = m_deviceResources->GetD3DDevice();
-	m_vertexBuffer.resource.Reset();
+	//m_vertexBuffer.resource.Reset();
 	AllocateUploadBuffer(device, newVertices.data(), newVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
-	currentTime += dt;
+	elapsedTime += m_timer.GetElapsedSeconds();
 }
 
 // Update frame-based values.

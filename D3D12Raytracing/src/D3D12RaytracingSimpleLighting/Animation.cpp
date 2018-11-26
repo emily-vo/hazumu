@@ -164,9 +164,9 @@ void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, cons
 		// Interpolate scaling and generate scaling transformation matrix
 		aiVector3D Scaling;
 		CalcInterpolatedScaling(Scaling, AnimationTime, pNodeAnim);
-		XMMATRIX ScalingM;
+		XMMATRIX scale;
 		float s[3] = { Scaling.x, Scaling.y, Scaling.z };
-		ScalingM = XMMatrixScalingFromVector({ s[0], s[1], s[2] });
+		scale = XMMatrixScalingFromVector({ s[0], s[1], s[2] });
 
 		// Interpolate rotation and generate rotation transformation matrix
 		aiQuaternion RotationQ;
@@ -179,7 +179,33 @@ void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, cons
 		XMMATRIX TranslationM = XMMatrixTranslationFromVector({ Translation.x, Translation.y, Translation.z });
 
 		// Combine the above transformations
-		NodeTransformation = ScalingM * RotationM * TranslationM;
+		//NodeTransformation = ScalingM * RotationM * TranslationM;
+
+		// Interpolate the transform between keyframes
+		//UINT keyframeIndex = FindKeyframeIndex(time);
+		//Keyframe* keyframeOne = mKeyframes[keyframeIndex];
+		//Keyframe* keyframeTwo = mKeyframes[keyframeIndex + 1];
+
+		//XMVECTOR translationOne = keyframeOne->TranslationVector();
+		//XMVECTOR rotationQuaternionOne = keyframeOne->RotationQuaternionVector();
+		//XMVECTOR scaleOne = keyframeOne->ScaleVector();
+
+		//XMVECTOR translationTwo = keyframeTwo->TranslationVector();
+		//XMVECTOR rotationQuaternionTwo = keyframeTwo->RotationQuaternionVector();
+		//XMVECTOR scaleTwo = keyframeTwo->ScaleVector();
+
+		//float lerpValue = ((time - keyframeOne->Time()) / (keyframeTwo->Time() - keyframeOne->Time()));
+		//XMVECTOR translation = XMVectorLerp(translationOne, translationTwo, lerpValue);
+		//XMVECTOR rotationQuaternion = XMQuaternionSlerp(rotationQuaternionOne, rotationQuaternionTwo, lerpValue);
+		//XMVECTOR scale = XMVectorLerp(scaleOne, scaleTwo, lerpValue);
+		float arr[4] = { 0.f, 0.f, 0.f, 0.f };
+		XMVECTOR rotationOrigin = XMVectorZero();
+		XMFLOAT4X4 transform;
+		XMVECTOR sVec{ s[0], s[1], s[2] };
+		XMVECTOR rotationQuaternion{ RotationQ.w, RotationQ.x, RotationQ.y, RotationQ.z };
+		XMVECTOR translation{ Translation.x, Translation.y, Translation.z };
+		XMStoreFloat4x4(&transform, XMMatrixAffineTransformation(sVec, rotationOrigin, rotationQuaternion, translation));
+		NodeTransformation = XMMatrixTranspose(XMLoadFloat4x4(&transform));
 	}
 
 	XMMATRIX GlobalTransformation = NodeTransformation * ParentTransform;
