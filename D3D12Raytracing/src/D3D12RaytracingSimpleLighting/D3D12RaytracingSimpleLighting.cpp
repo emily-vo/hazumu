@@ -135,7 +135,7 @@ void D3D12RaytracingSimpleLighting::InitializeScene()
     {
 		m_theta = 0.f;
 		m_phi = 0.f;
-		m_zoom = -5.f;
+		m_zoom = -500.f;
 		m_sphereAnglesDirty = true;
 		m_ref = { 0.0f, 0.0f, 0.0f, 1.f };
         // Initialize the view and projection inverse matrices.
