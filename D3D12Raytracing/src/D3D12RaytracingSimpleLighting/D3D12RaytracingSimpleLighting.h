@@ -43,6 +43,14 @@ namespace LocalRootSignatureParams {
     };
 }
 
+enum ComputeRootParameters : UINT32
+{
+	ComputeRootCBV = 0,
+	ComputeRootSRVTable,
+	ComputeRootUAVTable,
+	ComputeRootParametersCount
+};
+
 // The sample supports both Raytracing Fallback Layer and DirectX Raytracing APIs. 
 // This is purely for demonstration purposes to show where the API differences are. 
 // Real-world applications will implement only one or the other. 
@@ -134,6 +142,14 @@ private:
 	D3DBuffer m_vertexBufferSwap;
 	UINT64 numIdxBytes;
 	UINT64 numVtxBytes;
+
+	// Compute
+	static const UINT ThreadCount = 1;
+	ComPtr<ID3D12PipelineState> m_computeState;
+	ComPtr<ID3D12RootSignature> m_computeRootSignature;
+	ComPtr<ID3D12CommandAllocator> m_computeAllocator[ThreadCount];
+	ComPtr<ID3D12CommandQueue> m_computeCommandQueue[ThreadCount];
+	ComPtr<ID3D12GraphicsCommandList> m_computeCommandList[ThreadCount];
 
     // Acceleration structure
     ComPtr<ID3D12Resource> m_bottomLevelAccelerationStructure;

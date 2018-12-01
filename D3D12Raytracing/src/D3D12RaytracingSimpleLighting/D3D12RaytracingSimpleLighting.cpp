@@ -64,6 +64,11 @@ void D3D12RaytracingSimpleLighting::EnableDirectXRaytracing(IDXGIAdapter1* adapt
 
 void D3D12RaytracingSimpleLighting::OnInit()
 {
+	ComPtr<ID3D12Debug> debugController;
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
+	{
+		debugController->EnableDebugLayer();
+	}
     m_deviceResources = std::make_unique<DeviceResources>(
         DXGI_FORMAT_R8G8B8A8_UNORM,
         DXGI_FORMAT_UNKNOWN,
@@ -86,7 +91,24 @@ void D3D12RaytracingSimpleLighting::OnInit()
 
     CreateDeviceDependentResources();
     CreateWindowSizeDependentResources();
-	CompileComputeShaders();
+
+	ComPtr<ID3DBlob> computeShader;
+	ThrowIfFailed(D3DCompileFromFile(L"ExampleCompute.hlsl",
+		nullptr, nullptr, "main", "cs_5_0", 0, 0, &computeShader, nullptr));
+
+	// Describe and create the compute pipeline state object (PSO).
+	D3D12_COMPUTE_PIPELINE_STATE_DESC computePsoDesc = {};
+	computePsoDesc.pRootSignature = m_computeRootSignature.Get();
+	computePsoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
+
+	auto device = m_deviceResources->GetD3DDevice();
+	//ThrowIfFailed();
+	HRESULT res = device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&m_computeState));
+	ThrowIfFailed(res);
+	NAME_D3D12_OBJECT(m_computeState);
+
+
+	//CompileComputeShaders();
 }
 
 // Update camera matrices passed into the shader.
@@ -310,6 +332,28 @@ void D3D12RaytracingSimpleLighting::CreateRootSignatures()
         localRootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
         SerializeAndCreateRaytracingRootSignature(localRootSignatureDesc, &m_raytracingLocalRootSignature);
     }
+
+	// Compute root signature
+    {
+		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
+		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
+
+		CD3DX12_ROOT_PARAMETER1 rootParameters[ComputeRootParametersCount];
+		rootParameters[ComputeRootCBV].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[ComputeRootSRVTable].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
+		rootParameters[ComputeRootUAVTable].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
+
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC computeRootSignatureDesc;
+		computeRootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr);
+
+		ComPtr<ID3DBlob> signature;
+		ComPtr<ID3DBlob> error;
+		//ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&computeRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_1, &signature, &error));
+		//ThrowIfFailed(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_computeRootSignature)));
+		//NAME_D3D12_OBJECT(m_computeRootSignature);
+    }
+
 }
 
 // Create raytracing device and command list.
