@@ -3,14 +3,13 @@
 #include "RaytracingHlslCompat.h"
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
-#include "Mesh.h"
-
+#include "RTTI.h"
 using namespace DirectX;
 using String = std::string;
 
 class SceneNode : public RTTI
 {
-
+	RTTI_DECLARATIONS(SceneNode, RTTI)
 public:
 	const std::string& Name() const;
 	SceneNode* Parent();
@@ -35,5 +34,5 @@ protected:
 private:
 	SceneNode();
 	SceneNode(const SceneNode& rhs);
-	SceneNode& operator=(const SceneNode& rhs);
+	SceneNode& operator=(const SceneNode& rhs) = delete;
 };

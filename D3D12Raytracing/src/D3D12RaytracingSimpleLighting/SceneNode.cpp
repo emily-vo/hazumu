@@ -1,5 +1,8 @@
 #include "SceneNode.h"
 #include "MatrixHelper.h"
+
+RTTI_DEFINITIONS(SceneNode)
+
 SceneNode::SceneNode(const std::string& name)
 	: mName(name), mParent(nullptr), mChildren(), mTransform(MatrixHelper::Identity)
 {

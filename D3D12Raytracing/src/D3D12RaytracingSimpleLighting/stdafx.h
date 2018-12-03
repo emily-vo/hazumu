@@ -51,5 +51,3 @@
 
 #include "DXSampleHelper.h"
 #include "DeviceResources.h"
-
-#include "RTTI.h"
