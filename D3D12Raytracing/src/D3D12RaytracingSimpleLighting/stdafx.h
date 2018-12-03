@@ -47,6 +47,7 @@
 
 #ifdef _DEBUG
 #include <dxgidebug.h>
+#include <D3d12SDKLayers.h>
 #endif
 
 #include "DXSampleHelper.h"
