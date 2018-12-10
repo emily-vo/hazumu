@@ -8,7 +8,7 @@ Mesh::Mesh(String name) :
 	name(name),
 	vertices(),
 	indices() {
-	m_GlobalInverseTransform = XMMatrixIdentity();
+	m_GlobalInverseTransform = glm::mat4(1.f);
 }
 
 Mesh::Mesh(Mesh &&other) :
@@ -66,7 +66,15 @@ std::unique_ptr<Mesh> Mesh::LoadFromAiMesh(aiMesh *mesh) {
 		}
 
 		m->m_BoneMapping[BoneName] = BoneIndex;
-		m->m_BoneInfo[BoneIndex].BoneOffset = m->aiMatToXMMatrix(currMesh->mBones[i]->mOffsetMatrix);
+		m->m_BoneInfo[BoneIndex].BoneOffset = m->aiToMat4(currMesh->mBones[i]->mOffsetMatrix);
+		for (int i = 0; i < 4; ++i) {
+			for (int j = 0; j < 4; ++j) {
+				if (m->m_BoneInfo[BoneIndex].BoneOffset[i][j] < 1e-6) {
+					m->m_BoneInfo[BoneIndex].BoneOffset[i][j] = 0;
+				}
+			}
+		}
+		m->m_BoneInfo[BoneIndex].FinalTransformation = glm::mat4(1.f);
 
 		for (UINT j = 0; j < currMesh->mBones[i]->mNumWeights; j++) {
 			UINT VertexID = currMesh->mBones[i]->mWeights[j].mVertexId;

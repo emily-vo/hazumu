@@ -4,6 +4,8 @@
 #include "RaytracingHlslCompat.h"
 #include <assimp/scene.h>
 #include "Bone.h"
+#include "Animation.h"
+#include <glm/glm.hpp>
 
 using namespace DirectX;
 using String = std::string;
@@ -25,6 +27,30 @@ public:
 		return mat;
 	}
 
+	glm::mat4 aiToMat4(const aiMatrix4x4& in_mat) {
+		glm::mat4 tmp;
+		tmp[0][0] = in_mat.a1;
+		tmp[1][0] = in_mat.b1;
+		tmp[2][0] = in_mat.c1;
+		tmp[3][0] = in_mat.d1;
+
+		tmp[0][1] = in_mat.a2;
+		tmp[1][1] = in_mat.b2;
+		tmp[2][1] = in_mat.c2;
+		tmp[3][1] = in_mat.d2;
+
+		tmp[0][2] = in_mat.a3;
+		tmp[1][2] = in_mat.b3;
+		tmp[2][2] = in_mat.c3;
+		tmp[3][2] = in_mat.d3;
+
+		tmp[0][3] = in_mat.a4;
+		tmp[1][3] = in_mat.b4;
+		tmp[2][3] = in_mat.c4;
+		tmp[3][3] = in_mat.d4;
+		return tmp;
+	}
+
 	SceneNode* RootNode();
 	SceneNode* BuildSkeleton(aiNode& node, SceneNode* parentSceneNode);
 
@@ -35,7 +61,7 @@ public:
 	std::unordered_map<String, int> m_BoneMapping;
 
 	std::vector<BoneInfo> m_BoneInfo;
-	XMMATRIX m_GlobalInverseTransform;
+	glm::mat4 m_GlobalInverseTransform;
 	int m_NumBones;
 
 

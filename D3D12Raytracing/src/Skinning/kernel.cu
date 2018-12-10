@@ -24,7 +24,7 @@
 
 
 __global__ void fakeSkinKernel(int numVerts, cudaVertex *in, cudaVertex *out, const float time);
-__global__ void skinKernel(int numVerts, XMFLOAT4X4 *transforms, cudaVertexBoneData *bones, cudaVertex *in, cudaVertex *out, const float time);
+__global__ void skinKernel(int numVerts, glm::mat4 *transforms, cudaVertexBoneData *bones, cudaVertex *in, cudaVertex *out, const float time);
 void cudaFakeSkin(int numVerts, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time) {
 	int blockSize = 128;
 	dim3 blocksPerGrid((numVerts + blockSize - 1) / blockSize);
@@ -43,7 +43,7 @@ void cudaFakeSkin(int numVerts, cudaVertex *vertsIn, cudaVertex *vertsOut, const
 	cudaFree(dv_odata);
 }
 
-void cudaSkin(int numVerts, int numTransforms, XMFLOAT4X4 *transforms, cudaVertexBoneData *bones, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time) {
+void cudaSkin(int numVerts, int numTransforms, glm::mat4 *transforms, cudaVertexBoneData *bones, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time) {
 	int blockSize = 128;
 	dim3 blocksPerGrid((numVerts + blockSize - 1) / blockSize);
 	dim3 threadsPerBlock(blockSize);
@@ -54,9 +54,9 @@ void cudaSkin(int numVerts, int numTransforms, XMFLOAT4X4 *transforms, cudaVerte
 	cudaMalloc((void **)&dv_odata, numVerts * sizeof(cudaVertex));
 	cudaMemcpy(dv_idata, vertsIn, numVerts * sizeof(cudaVertex), cudaMemcpyHostToDevice);
 
-	XMFLOAT4X4 *dv_transforms;
-	cudaMalloc((void **)&dv_transforms, numTransforms * sizeof(XMFLOAT4X4));
-	cudaMemcpy(dv_transforms, transforms, numTransforms * sizeof(XMFLOAT4X4), cudaMemcpyHostToDevice);
+	glm::mat4 *dv_transforms;
+	cudaMalloc((void **)&dv_transforms, numTransforms * sizeof(glm::mat4));
+	cudaMemcpy(dv_transforms, transforms, numTransforms * sizeof(glm::mat4), cudaMemcpyHostToDevice);
 
 	cudaVertexBoneData *dv_bones;
 	cudaMalloc((void **)&dv_bones, numVerts * sizeof(cudaVertexBoneData));
@@ -135,7 +135,7 @@ __global__ void fakeSkinKernel(int numVerts, cudaVertex *in, cudaVertex *out, co
 	out[i] = makeCUDAVertex(pos, nor);
 }
 
-__global__ void skinKernel(int numVerts, XMFLOAT4X4 *transforms, cudaVertexBoneData *bones, cudaVertex *in, cudaVertex *out, const float time) {
+__global__ void skinKernel(int numVerts, glm::mat4 *transforms, cudaVertexBoneData *bones, cudaVertex *in, cudaVertex *out, const float time) {
 	int i = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (i >= numVerts) { return; }
 	auto &v = in[i];
@@ -148,7 +148,7 @@ __global__ void skinKernel(int numVerts, XMFLOAT4X4 *transforms, cudaVertexBoneD
 		int ID = bone.IDs[k];
 		float weight = bone.Weights[k];
 		totalWeight += weight;
-		glm::mat4 mat = xm2mat4(transforms[ID]);
+		glm::mat4 mat = (transforms[ID]);
 		transform += mat * weight;
 	}
 

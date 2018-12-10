@@ -41,12 +41,6 @@ struct Vertex
     XMFLOAT3 normal;
 };
 
-struct BoneInfo
-{
-	XMMATRIX BoneOffset;
-	XMMATRIX FinalTransformation;
-};
-
 struct VertexBoneData
 {
 	int IDs[4];

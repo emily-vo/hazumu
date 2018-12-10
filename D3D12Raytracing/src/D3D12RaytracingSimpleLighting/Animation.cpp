@@ -3,6 +3,12 @@
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <DirectXMath.h>
+#include "Mesh.h"
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 Animation::Animation(String name, Mesh *m) : name(name), m(m)
 {
@@ -23,7 +29,7 @@ std::unique_ptr<Animation> Animation::LoadFromFile(String file, Mesh *m) {
 
 	if (!scene) { throw std::exception("could not read file"); }
 	anim->m_pScene = scene;
-	m->m_GlobalInverseTransform = anim->aiMatToXMMatrix(scene->mRootNode->mTransformation.Inverse());
+	m->m_GlobalInverseTransform = anim->aiToMat4(scene->mRootNode->mTransformation.Inverse());
 	return anim;
 }
 
@@ -150,73 +156,39 @@ void Animation::CalcInterpolatedScaling(aiVector3D& Out, float AnimationTime, co
 	Out = Start + Factor * Delta;
 }
 
-
-void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, const XMMATRIX& ParentTransform)
-{
+void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, const glm::mat4& ParentTransform) {
 	String NodeName(pNode->mName.data);
 
 	const aiAnimation* pAnimation = m_pScene->mAnimations[0];
 
-	XMMATRIX NodeTransformation = aiMatToXMMatrix(pNode->mTransformation);
+	glm::mat4 NodeTransformation = aiToMat4(pNode->mTransformation);
 
 	const aiNodeAnim* pNodeAnim = FindNodeAnim(pAnimation, NodeName);
 
+	aiVector3D Scaling, Translation;
+	aiQuaternion RotationQ;
+
 	if (pNodeAnim) {
 		// Interpolate scaling and generate scaling transformation matrix
-		aiVector3D Scaling;
 		CalcInterpolatedScaling(Scaling, AnimationTime, pNodeAnim);
-		XMMATRIX scale;
-		float s[3] = { Scaling.x, Scaling.y, Scaling.z };
-		scale = XMMatrixScalingFromVector({ s[0], s[1], s[2] });
+		glm::mat4 scale = glm::scale(glm::vec3(Scaling.x, Scaling.y, Scaling.z));
 
 		// Interpolate rotation and generate rotation transformation matrix
-		aiQuaternion RotationQ;
 		CalcInterpolatedRotation(RotationQ, AnimationTime, pNodeAnim);
-		XMMATRIX RotationM = aiMatToXMMatrix(RotationQ.GetMatrix());
+		glm::mat4 rotation = glm::toMat4(glm::quat(RotationQ.w, RotationQ.x, RotationQ.y, RotationQ.z));
 
 		// Interpolate translation and generate translation transformation matrix
-		aiVector3D Translation;
 		CalcInterpolatedPosition(Translation, AnimationTime, pNodeAnim);
-		XMMATRIX TranslationM = XMMatrixTranslationFromVector({ Translation.x, Translation.y, Translation.z });
+		glm::mat4 translation = glm::translate(glm::vec3(Translation.x, Translation.y, Translation.z));
 
-		// Combine the above transformations
-		//NodeTransformation = ScalingM * RotationM * TranslationM;
-
-		// Interpolate the transform between keyframes
-		//UINT keyframeIndex = FindKeyframeIndex(time);
-		//Keyframe* keyframeOne = mKeyframes[keyframeIndex];
-		//Keyframe* keyframeTwo = mKeyframes[keyframeIndex + 1];
-
-		//XMVECTOR translationOne = keyframeOne->TranslationVector();
-		//XMVECTOR rotationQuaternionOne = keyframeOne->RotationQuaternionVector();
-		//XMVECTOR scaleOne = keyframeOne->ScaleVector();
-
-		//XMVECTOR translationTwo = keyframeTwo->TranslationVector();
-		//XMVECTOR rotationQuaternionTwo = keyframeTwo->RotationQuaternionVector();
-		//XMVECTOR scaleTwo = keyframeTwo->ScaleVector();
-
-		//float lerpValue = ((time - keyframeOne->Time()) / (keyframeTwo->Time() - keyframeOne->Time()));
-		//XMVECTOR translation = XMVectorLerp(translationOne, translationTwo, lerpValue);
-		//XMVECTOR rotationQuaternion = XMQuaternionSlerp(rotationQuaternionOne, rotationQuaternionTwo, lerpValue);
-		//XMVECTOR scale = XMVectorLerp(scaleOne, scaleTwo, lerpValue);
-		float arr[4] = { 0.f, 0.f, 0.f, 0.f };
-		XMVECTOR rotationOrigin = XMVectorZero();
-		XMFLOAT4X4 transform;
-		XMVECTOR sVec{ s[0], s[1], s[2] };
-		XMVECTOR rotationQuaternion{ RotationQ.w, RotationQ.x, RotationQ.y, RotationQ.z };
-		XMVECTOR translation{ Translation.x, Translation.y, Translation.z };
-		XMStoreFloat4x4(&transform, XMMatrixAffineTransformation(sVec, rotationOrigin, rotationQuaternion, translation));
-		NodeTransformation = XMMatrixTranspose(XMLoadFloat4x4(&transform));
+		NodeTransformation = translation * rotation * scale;
 	}
 
-	XMMATRIX GlobalTransformation = ParentTransform * NodeTransformation;
-	//GlobalTransformation = NodeTransformation * ParentTransform;
+	glm::mat4 GlobalTransformation = ParentTransform * NodeTransformation;
 
 	if (m->m_BoneMapping.find(NodeName) != m->m_BoneMapping.end()) {
 		UINT BoneIndex = m->m_BoneMapping[NodeName];
-		//m->m_BoneInfo[BoneIndex].FinalTransformation = m->m_BoneInfo[BoneIndex].BoneOffset * GlobalTransformation * m->m_GlobalInverseTransform ;
-		m->m_BoneInfo[BoneIndex].FinalTransformation = m->m_GlobalInverseTransform * GlobalTransformation  * m->m_BoneInfo[BoneIndex].BoneOffset;
-
+		m->m_BoneInfo[BoneIndex].FinalTransformation = m->m_GlobalInverseTransform * GlobalTransformation * m->m_BoneInfo[BoneIndex].BoneOffset;
 	}
 
 	for (UINT i = 0; i < pNode->mNumChildren; i++) {
@@ -224,16 +196,14 @@ void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, cons
 	}
 }
 
+void Animation::BoneTransform(float TimeInSeconds, std::vector<glm::mat4>& Transforms) {
+	glm::mat4 identity = glm::mat4(1.f);
 
-void Animation::BoneTransform(float TimeInSeconds, std::vector<XMMATRIX>& Transforms)
-{
-	XMMATRIX Identity = XMMatrixIdentity();
-
-	float TicksPerSecond = (float)(m_pScene->mAnimations[0]->mTicksPerSecond != 0 ? m_pScene->mAnimations[0]->mTicksPerSecond : 25.0f);
+	float TicksPerSecond = (float) (m_pScene->mAnimations[0]->mTicksPerSecond != 0 ? m_pScene->mAnimations[0]->mTicksPerSecond : 25.0f);
 	float TimeInTicks = TimeInSeconds * TicksPerSecond;
-	float AnimationTime = fmod(TimeInTicks, (float)m_pScene->mAnimations[0]->mDuration);
+	float AnimationTime = fmod(TimeInTicks, (float) m_pScene->mAnimations[0]->mDuration);
 
-	ReadNodeHeirarchy(AnimationTime, m_pScene->mRootNode, Identity);
+	ReadNodeHeirarchy(AnimationTime, m_pScene->mRootNode, identity);
 
 	Transforms.resize(m->m_NumBones);
 
@@ -241,4 +211,3 @@ void Animation::BoneTransform(float TimeInSeconds, std::vector<XMMATRIX>& Transf
 		Transforms[i] = m->m_BoneInfo[i].FinalTransformation;
 	}
 }
-

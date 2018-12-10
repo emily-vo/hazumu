@@ -248,10 +248,10 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	m = Model::LoadFromFile("../../../Resources/BaseMesh_Anim.fbx", "Beta");
+	m = Model::LoadFromFile("../../../Resources/OneSkin.fbx", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
 	for (int i = 0; i < m.get()->meshes.size(); i++) {
-		auto anim = Animation::LoadFromFile("../../../Resources/BaseMesh_Anim.fbx", m.get()->meshes[i].get());
+		auto anim = Animation::LoadFromFile("../../../Resources/OneSkin.fbx", m.get()->meshes[i].get());
 		anims.push_back(std::move(anim));
 	}
 
@@ -963,20 +963,12 @@ void D3D12RaytracingSimpleLighting::GPUFakeSkin(float elapsedTime) {
 }
 
 void D3D12RaytracingSimpleLighting::GPUSkin(float elapsedTime) {
-
 	for (int i = 0; i < anims.size(); i++) {
 		auto &a = anims[i];
-		std::vector<XMMATRIX> boneTransforms;
+		std::vector<glm::mat4> boneTransforms;
 		a->BoneTransform(elapsedTime, boneTransforms);
-		std::vector<XMFLOAT4X4> transforms;
-		for (XMMATRIX mat : boneTransforms) {
-			XMFLOAT4X4 other;
-			XMStoreFloat4x4(&other, mat);
-			transforms.push_back(other);
-		}
 
-
-		cudaSkin(m->meshes[0]->vertices.size(), transforms.size(), transforms.data(), reinterpret_cast<cudaVertexBoneData*>(m->meshes[i]->mBones.data()), reinterpret_cast<cudaVertex *>(m->meshes[0]->vertices.data()), newVertices, elapsedTime);
+		cudaSkin(m->meshes[0]->vertices.size(), boneTransforms.size(), boneTransforms.data(), reinterpret_cast<cudaVertexBoneData*>(m->meshes[i]->mBones.data()), reinterpret_cast<cudaVertex *>(m->meshes[0]->vertices.data()), newVertices, elapsedTime);
 		auto device = m_deviceResources->GetD3DDevice();
 		Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
 		AllocateUploadBuffer(device, updatedVerts, m->meshes[0]->vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
@@ -1212,7 +1204,7 @@ void D3D12RaytracingSimpleLighting::Skin() {
 	
 	for (int i = 0; i < anims.size(); i++) {
 		auto &a = anims[i];
-		std::vector<XMMATRIX> boneTransforms;
+		std::vector<glm::mat4> boneTransforms;
 		a->BoneTransform(elapsedTime, boneTransforms);
 		auto &mesh = m->meshes[i];
 		for (int j = 0; j < mesh->vertices.size(); j++) {
@@ -1221,21 +1213,20 @@ void D3D12RaytracingSimpleLighting::Skin() {
 			XMVECTOR pos = XMVectorZero();
 			XMVECTOR norm = XMVectorZero();
 			float totalWeight = 0;
-			XMMATRIX transform = XMMatrixSet(0, 0, 0, 0,
-											 0, 0, 0, 0,
-											 0, 0, 0, 0,
-											 0, 0, 0, 0);
+			glm::mat4 transform(0.f);
 			for (int k = 0; k < 4; k++) {
 				int ID = b.IDs[k];
 				float weight = b.Weights[k];
 				totalWeight += weight;
-				XMMATRIX mat = boneTransforms[ID];
+				glm::mat4 mat = boneTransforms[ID];
 				transform += boneTransforms[ID] * weight;
 				//pos += XMVector4Transform(XMLoadFloat3(&(v.position)), mat) * weight;
 				//norm += XMVector3Transform(XMLoadFloat3(&(v.normal)), mat) * weight;
 			}
-			pos = XMVector4Transform(XMLoadFloat3(&(v.position)), transform);
-			norm = XMVector3Transform(XMLoadFloat3(&(v.normal)), transform);
+			//pos = glm::vec3(transform * glm::vec4(v.position.x, v.position.y, v.position.z, 1));
+
+			//pos = XMVector4Transform(XMLoadFloat3(&(v.position)), transform);
+			//norm = XMVector3Transform(XMLoadFloat3(&(v.normal)), transform);
 			XMFLOAT3 pos3, nor3;
 			XMStoreFloat3(&pos3, pos);
 			XMStoreFloat3(&nor3, norm);
@@ -1276,11 +1267,6 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
     {
         float secondsToRotateAround = 24.0f;
         float angleToRotateBy = 360.0f * (elapsedTime / secondsToRotateAround);
-		//m_theta += angleToRotateBy;
-        //XMMATRIX rotate = XMMatrixRotationY(XMConvertToRadians(angleToRotateBy));
-        //m_eye = XMVector3Transform(m_eye, rotate);
-        //m_up = XMVector3Transform(m_up, rotate);
-        //m_at = XMVector3Transform(m_at, rotate);
         UpdateCameraMatrices();
     }
 
