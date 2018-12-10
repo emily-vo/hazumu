@@ -17,7 +17,7 @@ MorphTarget::MorphTarget(const std::string &filename) :
 	targets(),
 	activeVertices(),
 	indices(),
-	duration(6.f)
+	duration(3.f)
 {
 	std::ifstream file(filename);
 	std::stringstream buffer;
@@ -38,7 +38,7 @@ MorphTarget::MorphTarget(const std::string &filename) :
 		float y = vertices[i + 1].GetFloat();
 		float z = vertices[i + 2].GetFloat();
 		XMFLOAT3 pos(x, y, z);
-		XMFLOAT3 nor(0, 0, 1);
+		XMFLOAT3 nor(1, 0, 0);
 		initVertices.push_back({ pos, nor });
 	}
 
