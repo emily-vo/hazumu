@@ -20,3 +20,4 @@ struct cudaVertexBoneData
 
 void cudaFakeSkin(int numVerts, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time);
 void cudaSkin(int numVerts, int numTransforms, glm::mat4 *transforms, cudaVertexBoneData *bones, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time);
+void triangleSim(int numVerts, glm::mat4 *transformsIn, glm::mat4 *transformsOut, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time);

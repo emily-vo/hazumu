@@ -15,6 +15,10 @@
 #include "CompiledShaders\Raytracing.hlsl.h"
 
 #include "cudaSkinning.h"
+#include <cstdlib>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
 
 using namespace std;
 using namespace DX;
@@ -142,7 +146,7 @@ void D3D12RaytracingSimpleLighting::InitializeScene()
     {
 		m_theta = 0.f;
 		m_phi = 0.f;
-		m_zoom = -500.f;
+		m_zoom = -70.f;
 		m_sphereAnglesDirty = true;
 		m_ref = { 0.0f, 0.0f, 0.0f, 1.f };
         // Initialize the view and projection inverse matrices.
@@ -248,10 +252,10 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	m = Model::LoadFromFile("../../../Resources/OneSkin.fbx", "Beta");
+	m = Model::LoadFromFile("../../../Resources/boblampclean.md5anim", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
 	for (int i = 0; i < m.get()->meshes.size(); i++) {
-		auto anim = Animation::LoadFromFile("../../../Resources/OneSkin.fbx", m.get()->meshes[i].get());
+		auto anim = Animation::LoadFromFile("../../../Resources/boblampclean.md5mesh", m.get()->meshes[i].get());
 		anims.push_back(std::move(anim));
 	}
 
@@ -259,7 +263,8 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 	//animClip = std::make_unique<AnimationClip>(*m->meshes[0], *(anims[0]->m_pScene->mAnimations[0]));
 	//animPlayer->StartClip(*animClip);
 
-	BuildModelGeometry(*m);
+	//BuildModelGeometry(*m);
+	BuildTriangles();
 
     // Build raytracing acceleration structures from the generated geometry.
     BuildAccelerationStructures();
@@ -486,72 +491,125 @@ void D3D12RaytracingSimpleLighting::CreateDescriptorHeap()
 // Build geometry used in the sample.
 void D3D12RaytracingSimpleLighting::BuildGeometry()
 {
-    auto device = m_deviceResources->GetD3DDevice();
+	auto device = m_deviceResources->GetD3DDevice();
 
-    // Cube indices.
-    Index indices[] =
-    {
-        3,1,0,
-        2,1,3,
+	// Cube indices.
+	Index indices[] =
+	{
+		3,1,0,
+		2,1,3,
 
-        6,4,5,
-        7,4,6,
+		6,4,5,
+		7,4,6,
 
-        11,9,8,
-        10,9,11,
+		11,9,8,
+		10,9,11,
 
-        14,12,13,
-        15,12,14,
+		14,12,13,
+		15,12,14,
 
-        19,17,16,
-        18,17,19,
+		19,17,16,
+		18,17,19,
 
-        22,20,21,
-        23,20,22
-    };
+		22,20,21,
+		23,20,22
+	};
 
-    // Cube vertices positions and corresponding triangle normals.
-    Vertex vertices[] =
-    {
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
+	// Cube vertices positions and corresponding triangle normals.
+	Vertex vertices[] =
+	{
+		{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
+		{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 1.0f, 0.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
+		{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
+		{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, -1.0f, 0.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(-1.0f, 0.0f, 0.0f) },
 
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
+		{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(1.0f, 0.0f, 0.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-        { XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-        { XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
+		{ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
+		{ XMFLOAT3(1.0f, -1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
+		{ XMFLOAT3(1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
+		{ XMFLOAT3(-1.0f, 1.0f, -1.0f), XMFLOAT3(0.0f, 0.0f, -1.0f) },
 
-        { XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-        { XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
-    };
+		{ XMFLOAT3(-1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
+		{ XMFLOAT3(1.0f, -1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
+		{ XMFLOAT3(1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
+		{ XMFLOAT3(-1.0f, 1.0f, 1.0f), XMFLOAT3(0.0f, 0.0f, 1.0f) },
+	};
 
-    AllocateUploadBuffer(device, indices, sizeof(indices), &m_indexBuffer.resource);
-    AllocateUploadBuffer(device, vertices, sizeof(vertices), &m_vertexBuffer.resource);
+	AllocateUploadBuffer(device, indices, sizeof(indices), &m_indexBuffer.resource);
+	AllocateUploadBuffer(device, vertices, sizeof(vertices), &m_vertexBuffer.resource);
 
-    // Vertex buffer is passed to the shader along with index buffer as a descriptor table.
-    // Vertex buffer descriptor must follow index buffer descriptor in the descriptor heap.
-    UINT descriptorIndexIB = CreateBufferSRV(&m_indexBuffer, sizeof(indices)/4, 0);
-    UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, ARRAYSIZE(vertices), sizeof(vertices[0]));
-    ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
+	// Vertex buffer is passed to the shader along with index buffer as a descriptor table.
+	// Vertex buffer descriptor must follow index buffer descriptor in the descriptor heap.
+	UINT descriptorIndexIB = CreateBufferSRV(&m_indexBuffer, sizeof(indices) / 4, 0);
+	UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, ARRAYSIZE(vertices), sizeof(vertices[0]));
+	ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
+}
+
+float randBetween(float min, float max) {
+	float rand01 = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+	rand01 *= (max - min);
+	return rand01 + min;
+}
+
+void D3D12RaytracingSimpleLighting::BuildTriangles() {
+	auto device = m_deviceResources->GetD3DDevice();
+	const int NUM_TRIANGLES = 4000;
+	const float RADIUS = 60;
+	Vertex verts[3];
+	verts[0] = { {-0.5, 0, 0}, {0, 0, 1} };
+	verts[1] = { { 0.5, 0, 0}, {0, 0, 1} };
+	verts[2] = { { 0, 0.5, 0}, {0, 0, 1} };
+	std::vector<Vertex> vertices;
+	std::vector<Index> indices;
+	for (int i = 0; i < NUM_TRIANGLES; ++i) {
+		float r = RADIUS;
+		float phi = randBetween(0, 6.28318530718f);
+		float theta = randBetween(0, 3.14159265359f);
+		float x = r * glm::sin(theta) * glm::cos(phi);
+		float y = r * glm::sin(theta) * glm::sin(phi);
+		float z = r * glm::cos(theta);
+		auto t = glm::translate(glm::vec3(x, y, z));
+		triangleTransforms.push_back(t);
+		int count = vertices.size();
+		glm::vec3 v0 = glm::vec3(t * glm::vec4(-0.5, 0, 0, 1));
+		glm::vec3 v1 = glm::vec3(t * glm::vec4(0.5, 0, 0, 1));
+		glm::vec3 v2 = glm::vec3(t * glm::vec4(0, 0.5, 0, 1));
+		XMFLOAT3 normal = { 0, 0, 1 };
+		vertices.push_back({ { v0.x, v0.y, v0.z }, normal });
+		vertices.push_back({ { v1.x, v1.y, v1.z }, normal });
+		vertices.push_back({ { v2.x, v2.y, v2.z }, normal });
+		indices.push_back(count + 0);
+		indices.push_back(count + 1);
+		indices.push_back(count + 2);
+	}
+
+	AllocateUploadBuffer(device, indices.data(), indices.size() * sizeof(Index), &m_indexBuffer.resource);
+	AllocateUploadBuffer(device, vertices.data(), vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+
+	// Vertex buffer is passed to the shader along with index buffer as a descriptor table.
+	// Vertex buffer descriptor must follow index buffer descriptor in the descriptor heap.
+	UINT descriptorIndexIB = CreateBufferSRV(&m_indexBuffer, indices.size() * sizeof(Index) / 4, 0);
+	UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, vertices.size(), sizeof(Vertex));
+	ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
+
+	triangleVerts = vertices;
+	triangleIdx = indices;
+	newVertices = new cudaVertex[vertices.size()];
+	transformsOut = new glm::mat4[NUM_TRIANGLES];
 }
 
 void D3D12RaytracingSimpleLighting::BuildModelGeometry(Model &m) {
@@ -955,7 +1013,7 @@ void D3D12RaytracingSimpleLighting::FakeSkinTest() {
 }
 
 void D3D12RaytracingSimpleLighting::GPUFakeSkin(float elapsedTime) {
-
+	
 	cudaFakeSkin(m->meshes[0]->vertices.size(), reinterpret_cast<cudaVertex *>(m->meshes[0]->vertices.data()), newVertices, elapsedTime);
 	auto device = m_deviceResources->GetD3DDevice();
 	Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
@@ -973,6 +1031,20 @@ void D3D12RaytracingSimpleLighting::GPUSkin(float elapsedTime) {
 		Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
 		AllocateUploadBuffer(device, updatedVerts, m->meshes[0]->vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
 	}
+}
+
+void D3D12RaytracingSimpleLighting::GPUTriangleSim(float elapsedTime) {
+	int test = 0;
+	triangleSim(triangleVerts.size(),
+		triangleTransforms.data(),
+		transformsOut,
+		reinterpret_cast<cudaVertex*>(triangleVerts.data()),
+		newVertices, elapsedTime);
+
+	auto device = m_deviceResources->GetD3DDevice();
+	Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
+	AllocateUploadBuffer(device, updatedVerts, triangleVerts.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+
 }
 
 // Build shader tables.
@@ -1257,9 +1329,10 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
 	static float elapsed = 0;
 	{
 		//GPUFakeSkin(elapsed);
-		GPUSkin(elapsed);
+		//GPUSkin(elapsed);
+		GPUTriangleSim(elapsed);
 	}
-	elapsed += m_timer.GetElapsedSeconds();
+	elapsed += elapsedTime;
     UpdateBottomLevelAS();
 	UpdateTopLevelAS();
 
@@ -1267,7 +1340,7 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
     {
         float secondsToRotateAround = 24.0f;
         float angleToRotateBy = 360.0f * (elapsedTime / secondsToRotateAround);
-        UpdateCameraMatrices();
+        //UpdateCameraMatrices();
     }
 
     // Rotate the second light around Y axis.
