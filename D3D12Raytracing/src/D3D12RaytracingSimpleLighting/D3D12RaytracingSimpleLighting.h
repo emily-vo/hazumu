@@ -23,6 +23,8 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 
+#include "AnimationPlayer.h"
+
 #pragma comment(lib,"d3d11.lib")
 #pragma comment(lib,"d3dcompiler.lib")
 
@@ -239,6 +241,8 @@ private:
 		_In_ ID3D11Device* device, _Outptr_ ID3DBlob** blob);
 	int CompileComputeShaders();
 	void Skin();
+	std::unique_ptr<AnimationPlayer> animPlayer;
+	std::unique_ptr<AnimationClip> animClip;
 };
 
 inline std::wstring s2ws(const std::string &s) {

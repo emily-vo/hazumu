@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "AnimationPlayer.h"
 #include "Mesh.h"
 #include "Bone.h"

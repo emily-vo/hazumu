@@ -92,21 +92,6 @@ void D3D12RaytracingSimpleLighting::OnInit()
     CreateDeviceDependentResources();
     CreateWindowSizeDependentResources();
 
-	ComPtr<ID3DBlob> computeShader;
-	ThrowIfFailed(D3DCompileFromFile(L"ExampleCompute.hlsl",
-		nullptr, nullptr, "main", "cs_5_0", 0, 0, &computeShader, nullptr));
-
-	// Describe and create the compute pipeline state object (PSO).
-	D3D12_COMPUTE_PIPELINE_STATE_DESC computePsoDesc = {};
-	computePsoDesc.pRootSignature = m_computeRootSignature.Get();
-	computePsoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
-
-	auto device = m_deviceResources->GetD3DDevice();
-	//ThrowIfFailed();
-	HRESULT res = device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&m_computeState));
-	ThrowIfFailed(res);
-	NAME_D3D12_OBJECT(m_computeState);
-
 
 	//CompileComputeShaders();
 }
@@ -263,12 +248,16 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
+	m = Model::LoadFromFile("../../../Resources/OneSkin.fbx", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
 	for (int i = 0; i < m.get()->meshes.size(); i++) {
-		auto anim = Animation::LoadFromFile("../../../Resources/skinning_test.fbx", m.get()->meshes[i].get());
+		auto anim = Animation::LoadFromFile("../../../Resources/OneSkin.fbx", m.get()->meshes[i].get());
 		anims.push_back(std::move(anim));
 	}
+
+	//animPlayer = std::make_unique<AnimationPlayer>(*m->meshes[0]);
+	//animClip = std::make_unique<AnimationClip>(*m->meshes[0], *(anims[0]->m_pScene->mAnimations[0]));
+	//animPlayer->StartClip(*animClip);
 
 	BuildModelGeometry(*m);
 
@@ -971,7 +960,7 @@ void D3D12RaytracingSimpleLighting::UpdateBottomLevelAS() {
 void D3D12RaytracingSimpleLighting::FakeSkinTest() {
 	static float elapsedTime = 0;
 	XMMATRIX rot = XMMatrixRotationY(XMConvertToRadians((elapsedTime / 24.f) * 360.f));
-	std::vector<Vertex> newVertices;
+	std::vector<Vertex> newVertices = m->meshes[0]->vertices;
 	for (auto &mesh : m->meshes) {
 		for (auto &v : mesh->vertices) {
 			XMFLOAT3 pos3;
@@ -1181,6 +1170,38 @@ void D3D12RaytracingSimpleLighting::OnMiddleButtonUp(UINT x, UINT y) {
 
 void D3D12RaytracingSimpleLighting::Skin() {
 	std::vector<Vertex> newVertices;
+	/*
+	auto boneTransforms = animPlayer->BoneTransforms();
+	auto &mesh = m->meshes[0];
+	for (int j = 0; j < mesh->vertices.size(); j++) {
+		auto &v = mesh->vertices[j];
+		auto &b = mesh->mBones[j];
+		XMVECTOR pos = XMVectorZero();
+		XMVECTOR norm = XMVectorZero();
+		float totalWeight = 0;
+		XMMATRIX transform = XMMatrixSet(0, 0, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 0,
+			0, 0, 0, 0);
+		for (int k = 0; k < 4; k++) {
+			int ID = b.IDs[k];
+			float weight = b.Weights[k];
+			totalWeight += weight;
+			XMMATRIX mat = XMLoadFloat4x4(&boneTransforms[ID]);
+			transform += mat * weight;
+			//pos += XMVector4Transform(XMLoadFloat3(&(v.position)), mat) * weight;
+			//norm += XMVector3Transform(XMLoadFloat3(&(v.normal)), mat) * weight;
+		}
+		pos = XMVector4Transform(XMLoadFloat3(&(v.position)), transform);
+		norm = XMVector3Transform(XMLoadFloat3(&(v.normal)), transform);
+		XMFLOAT3 pos3, nor3;
+		XMStoreFloat3(&pos3, pos);
+		XMStoreFloat3(&nor3, norm);
+		newVertices.push_back(Vertex{ pos3, nor3 });
+
+	}
+	*/
+	
 	for (int i = 0; i < anims.size(); i++) {
 		auto &a = anims[i];
 		std::vector<XMMATRIX> boneTransforms;
@@ -1213,6 +1234,7 @@ void D3D12RaytracingSimpleLighting::Skin() {
 			newVertices.push_back(Vertex{ pos3, nor3 });
 		}
 	}
+	
 	auto device = m_deviceResources->GetD3DDevice();
 	//m_vertexBuffer.resource.Reset();
 	AllocateUploadBuffer(device, newVertices.data(), newVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
@@ -1224,9 +1246,12 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
 {
     m_timer.Tick();
     CalculateFrameStats();
+	auto prevTime = elapsedTime;
     float elapsedTime = static_cast<float>(m_timer.GetElapsedSeconds());
     auto frameIndex = m_deviceResources->GetCurrentFrameIndex();
     auto prevFrameIndex = m_deviceResources->GetPreviousFrameIndex();
+
+	//animPlayer->Update(prevTime - elapsedTime);
 
 	//FakeSkinTest();
 	Skin();

@@ -16,11 +16,16 @@ AnimationClip::AnimationClip(Mesh& model, aiAnimation& animation)
 
 	for (UINT i = 0; i < animation.mNumChannels; i++)
 	{
-		BoneAnimation* boneAnimation = new BoneAnimation(model, *(animation.mChannels[i]));
-		mBoneAnimations.push_back(boneAnimation);
+		try {
+			BoneAnimation* boneAnimation = new BoneAnimation(model, *(animation.mChannels[i]));
+			mBoneAnimations.push_back(boneAnimation);
 
-		assert(mBoneAnimationsByBone.find(&(boneAnimation->GetBone())) == mBoneAnimationsByBone.end());
-		mBoneAnimationsByBone[&(boneAnimation->GetBone())] = boneAnimation;
+			assert(mBoneAnimationsByBone.find(&(boneAnimation->GetBone())) == mBoneAnimationsByBone.end());
+			mBoneAnimationsByBone[&(boneAnimation->GetBone())] = boneAnimation;
+		}
+		catch (std::exception &) {
+
+		}
 	}
 
 	for (BoneAnimation* boneAnimation : mBoneAnimations)

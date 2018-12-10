@@ -122,6 +122,7 @@ void Animation::CalcInterpolatedRotation(aiQuaternion& Out, float AnimationTime,
 	assert(NextRotationIndex < pNodeAnim->mNumRotationKeys);
 	float DeltaTime = (float)(pNodeAnim->mRotationKeys[NextRotationIndex].mTime - pNodeAnim->mRotationKeys[RotationIndex].mTime);
 	float Factor = (AnimationTime - (float)pNodeAnim->mRotationKeys[RotationIndex].mTime) / DeltaTime;
+	Factor -= std::floor(Factor);
 	assert(Factor >= 0.0f && Factor <= 1.0f);
 	const aiQuaternion& StartRotationQ = pNodeAnim->mRotationKeys[RotationIndex].mValue;
 	const aiQuaternion& EndRotationQ = pNodeAnim->mRotationKeys[NextRotationIndex].mValue;
@@ -209,6 +210,7 @@ void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, cons
 	}
 
 	XMMATRIX GlobalTransformation = ParentTransform * NodeTransformation;
+	//GlobalTransformation = NodeTransformation * ParentTransform;
 
 	if (m->m_BoneMapping.find(NodeName) != m->m_BoneMapping.end()) {
 		UINT BoneIndex = m->m_BoneMapping[NodeName];

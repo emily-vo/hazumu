@@ -166,6 +166,7 @@ PrebuildCheck.bat</Command>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
     <ClInclude Include="AnimationClip.h" />
+    <ClInclude Include="AnimationPlayer.h" />
     <ClInclude Include="Bone.h" />
     <ClInclude Include="BoneAnimation.h" />
     <ClInclude Include="DeviceResources.h" />
@@ -191,6 +192,7 @@ PrebuildCheck.bat</Command>
     <ClCompile Include="AnimationClip.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="AnimationPlayer.cpp" />
     <ClCompile Include="Bone.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
