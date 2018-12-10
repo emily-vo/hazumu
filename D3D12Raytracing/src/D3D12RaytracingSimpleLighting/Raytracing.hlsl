@@ -99,7 +99,7 @@ float4 CalculateDiffuseLighting(float3 hitPosition, float3 normal)
 
     // Diffuse contribution.
     float fNDotL = max(0.0f, dot(pixelToLight, normal));
-
+	
     return g_cubeCB.albedo * g_sceneCB.lightDiffuseColor * fNDotL;
 }
 
@@ -149,10 +149,17 @@ void MyClosestHitShader(inout RayPayload payload, in MyAttributes attr)
         Vertices[indices[2]].normal 
     };
 
+	float3 vertexPos[3] = {
+		Vertices[indices[0]].position,
+		Vertices[indices[1]].position,
+		Vertices[indices[2]].position
+	};
+
     // Compute the triangle's normal.
     // This is redundant and done for illustration purposes 
     // as all the per-vertex normals are the same and match triangle's normal in this sample. 
     float3 triangleNormal = HitAttribute(vertexNormals, attr);
+	triangleNormal = cross(vertexPos[2] - vertexPos[1], vertexPos[1] - vertexPos[0]);
 
     float4 diffuseColor = CalculateDiffuseLighting(hitPosition, triangleNormal);
     float4 color = g_sceneCB.lightAmbientColor + diffuseColor;

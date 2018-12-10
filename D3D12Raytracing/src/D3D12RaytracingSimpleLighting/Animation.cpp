@@ -167,19 +167,20 @@ void Animation::ReadNodeHeirarchy(float AnimationTime, const aiNode* pNode, cons
 
 	aiVector3D Scaling, Translation;
 	aiQuaternion RotationQ;
+	glm::mat4 scale, rotation, translation;
 
 	if (pNodeAnim) {
 		// Interpolate scaling and generate scaling transformation matrix
 		CalcInterpolatedScaling(Scaling, AnimationTime, pNodeAnim);
-		glm::mat4 scale = glm::scale(glm::vec3(Scaling.x, Scaling.y, Scaling.z));
+		scale = glm::scale(glm::vec3(Scaling.x, Scaling.y, Scaling.z));
 
 		// Interpolate rotation and generate rotation transformation matrix
 		CalcInterpolatedRotation(RotationQ, AnimationTime, pNodeAnim);
-		glm::mat4 rotation = glm::toMat4(glm::quat(RotationQ.w, RotationQ.x, RotationQ.y, RotationQ.z));
+		rotation = glm::toMat4(glm::quat(RotationQ.x, RotationQ.y, RotationQ.z, RotationQ.w));
 
 		// Interpolate translation and generate translation transformation matrix
 		CalcInterpolatedPosition(Translation, AnimationTime, pNodeAnim);
-		glm::mat4 translation = glm::translate(glm::vec3(Translation.x, Translation.y, Translation.z));
+		translation = glm::translate(glm::vec3(Translation.x, Translation.y, Translation.z));
 
 		NodeTransformation = translation * rotation * scale;
 	}

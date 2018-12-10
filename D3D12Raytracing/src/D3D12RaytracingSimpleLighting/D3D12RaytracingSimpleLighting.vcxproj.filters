@@ -90,6 +90,12 @@
     <ClInclude Include="AnimationPlayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="math_3d.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MorphTarget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -138,6 +144,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AnimationPlayer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MorphTarget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -254,12 +254,14 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 		auto anim = Animation::LoadFromFile("../../../Resources/OneSkin.fbx", m.get()->meshes[i].get());
 		anims.push_back(std::move(anim));
 	}
+	mt = std::make_unique<MorphTarget>("../../../Resources/wolf.json");
 
 	//animPlayer = std::make_unique<AnimationPlayer>(*m->meshes[0]);
 	//animClip = std::make_unique<AnimationClip>(*m->meshes[0], *(anims[0]->m_pScene->mAnimations[0]));
 	//animPlayer->StartClip(*animClip);
 
-	BuildModelGeometry(*m);
+	//BuildModelGeometry(*m);
+	BuildMorphTarget(*mt);
 
     // Build raytracing acceleration structures from the generated geometry.
     BuildAccelerationStructures();
@@ -588,6 +590,22 @@ void D3D12RaytracingSimpleLighting::BuildModelGeometry(Model &m) {
 	newVertices = new cudaVertex[masterVertices.size()];
 }
 
+void D3D12RaytracingSimpleLighting::BuildMorphTarget(MorphTarget &m) {
+	auto device = m_deviceResources->GetD3DDevice();
+	auto &indices = m.indices;
+	auto &vertices = m.activeVertices;
+
+	AllocateUploadBuffer(device, indices.data(), indices.size() * sizeof(Index), &m_indexBuffer.resource);
+	AllocateUploadBuffer(device, vertices.data(), vertices.size() * sizeof(vertices), &m_vertexBuffer.resource);
+
+	// Vertex buffer is passed to the shader along with index buffer as a descriptor table.
+	// Vertex buffer descriptor must follow index buffer descriptor in the descriptor heap.
+	UINT descriptorIndexIB = CreateBufferSRV(&m_indexBuffer, indices.size() * sizeof(Index) / 4, 0);
+	UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, vertices.size(), sizeof(Vertex));
+	ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
+	newVertices = new cudaVertex[vertices.size()];
+}
+
 void D3D12RaytracingSimpleLighting::SwapGeometryBuffers() {
 	// At the beginning of this call, m_indexBufferSwap and
 	// m_vertexBufferSwap will contain the updated indices and
@@ -846,13 +864,13 @@ void D3D12RaytracingSimpleLighting::UpdateTopLevelAS() {
 
 	commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::UAV(m_topLevelAccelerationStructure.Get()));
 
-	commandList->Close();
+	//commandList->Close();
 
 	//// Kick off acceleration structure construction.
-	//m_deviceResources->ExecuteCommandList();
+	m_deviceResources->ExecuteCommandList();
 
 	//// Wait for GPU to finish as the locally created temporary GPU resources will get released once we go out of scope.
-	//m_deviceResources->WaitForGpu();
+	m_deviceResources->WaitForGpu();
 }
 
 void D3D12RaytracingSimpleLighting::UpdateBottomLevelAS() {
@@ -973,6 +991,17 @@ void D3D12RaytracingSimpleLighting::GPUSkin(float elapsedTime) {
 		Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
 		AllocateUploadBuffer(device, updatedVerts, m->meshes[0]->vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
 	}
+}
+
+void D3D12RaytracingSimpleLighting::UpdateMorphTarget(float elapsedTime) {
+	mt->Update(elapsedTime);
+	//cudaFakeSkin(mt->initVertices.size(), reinterpret_cast<cudaVertex*>(mt->initVertices.data()), newVertices, elapsedTime);
+
+	auto device = m_deviceResources->GetD3DDevice();
+	Vertex *updatedVerts = mt->activeVertices.data();
+	m_deviceResources->WaitForGpu();
+	AllocateUploadBuffer(device, updatedVerts, mt->initVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+	m_deviceResources->WaitForGpu();
 }
 
 // Build shader tables.
@@ -1257,11 +1286,15 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
 	static float elapsed = 0;
 	{
 		//GPUFakeSkin(elapsed);
-		GPUSkin(elapsed);
+		//GPUSkin(elapsed);
+	}
+	{
+		// morph targets
+		UpdateMorphTarget(elapsed);
 	}
 	elapsed += m_timer.GetElapsedSeconds();
     UpdateBottomLevelAS();
-	UpdateTopLevelAS();
+	//UpdateTopLevelAS();
 
     // Rotate the camera around Y axis.
     {

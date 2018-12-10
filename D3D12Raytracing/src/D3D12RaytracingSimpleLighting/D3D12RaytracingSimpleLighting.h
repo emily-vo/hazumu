@@ -27,6 +27,7 @@
 #include <glm/glm.hpp>
 
 #include "AnimationPlayer.h"
+#include "MorphTarget.h"
 
 #pragma comment(lib,"d3d11.lib")
 #pragma comment(lib,"d3dcompiler.lib")
@@ -228,6 +229,9 @@ private:
     void CreateRaytracingOutputResource();
     void BuildGeometry();
 	void BuildModelGeometry(Model &m);
+	std::unique_ptr<MorphTarget> mt;
+	void BuildMorphTarget(MorphTarget &m);
+	void UpdateMorphTarget(float elapsed);
 	void SwapGeometryBuffers();
     void BuildAccelerationStructures();
 	void UpdateTopLevelAS();

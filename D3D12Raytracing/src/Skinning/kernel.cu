@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/compatibility.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <stdio.h>
@@ -25,6 +26,7 @@
 
 __global__ void fakeSkinKernel(int numVerts, cudaVertex *in, cudaVertex *out, const float time);
 __global__ void skinKernel(int numVerts, glm::mat4 *transforms, cudaVertexBoneData *bones, cudaVertex *in, cudaVertex *out, const float time);
+__global__ void morphTargetKernel(int numVerts, cudaVertex *target1, cudaVertex *target2, cudaVertex *out, const float alpha);
 void cudaFakeSkin(int numVerts, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time) {
 	int blockSize = 128;
 	dim3 blocksPerGrid((numVerts + blockSize - 1) / blockSize);
@@ -70,6 +72,27 @@ void cudaSkin(int numVerts, int numTransforms, glm::mat4 *transforms, cudaVertex
 	cudaFree(dv_odata);
 	cudaFree(dv_transforms);
 	cudaFree(dv_bones);
+}
+
+void cudaMorph(int numVerts, cudaVertex *target1, cudaVertex *target2, cudaVertex *vertsOut, const float alpha) {
+	int blockSize = 128;
+	dim3 blocksPerGrid((numVerts + blockSize - 1) / blockSize);
+	dim3 threadsPerBlock(blockSize);
+
+	cudaVertex *dv_itarget1, *dv_itarget2, *dv_odata;
+
+	cudaMalloc((void **) &dv_itarget1, numVerts * sizeof(cudaVertex));
+	cudaMalloc((void **) &dv_itarget2, numVerts * sizeof(cudaVertex));
+	cudaMalloc((void **) &dv_odata, numVerts * sizeof(cudaVertex));
+	cudaMemcpy(dv_itarget1, target1, numVerts * sizeof(cudaVertex), cudaMemcpyHostToDevice);
+	cudaMemcpy(dv_itarget2, target2, numVerts * sizeof(cudaVertex), cudaMemcpyHostToDevice);
+
+	morphTargetKernel << <blocksPerGrid, threadsPerBlock >> > (numVerts, dv_itarget1, dv_itarget2, dv_odata, alpha);
+
+	cudaMemcpy(vertsOut, dv_odata, numVerts * sizeof(cudaVertex), cudaMemcpyDeviceToHost);
+	cudaFree(dv_itarget1);
+	cudaFree(dv_itarget2);
+	cudaFree(dv_odata);
 }
 
 
@@ -155,5 +178,19 @@ __global__ void skinKernel(int numVerts, glm::mat4 *transforms, cudaVertexBoneDa
 	pos = glm::vec3(transform * glm::vec4(pos, 1.0f));
 	nor = glm::vec3(transform * glm::vec4(nor, 0.0f));
 
+	out[i] = makeCUDAVertex(pos, nor);
+}
+
+__global__ void morphTargetKernel(int numVerts, cudaVertex *target1, cudaVertex *target2, cudaVertex *out, float alpha) {
+	int i = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (i >= numVerts) { return; }
+	auto &v1 = target1[i];
+	auto &v2 = target2[i];
+	glm::vec3 pos1 = xm2vec3(v1.position);
+	glm::vec3 pos2 = xm2vec3(v2.position);
+	glm::vec3 nor1 = xm2vec3(v1.normal);
+	glm::vec3 nor2 = xm2vec3(v2.normal);
+	glm::vec3 pos = glm::lerp(pos1, pos2, alpha);
+	glm::vec3 nor = glm::lerp(nor1, nor2, alpha);
 	out[i] = makeCUDAVertex(pos, nor);
 }

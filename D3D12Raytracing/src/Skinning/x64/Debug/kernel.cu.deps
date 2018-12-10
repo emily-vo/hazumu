@@ -515,8 +515,8 @@ d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\../ext/matrix_transform.
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\ext\matrix_transform.inl
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\matrix_transform.inl
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtx\transform.inl
-D:\Users\achan\Projects\hazumu\hazumu\D3D12Raytracing\src\Skinning\..\..\..\Libraries\glm/gtc/type_ptr.hpp
-d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\../gtc/quaternion.hpp
+D:\Users\achan\Projects\hazumu\hazumu\D3D12Raytracing\src\Skinning\..\..\..\Libraries\glm/gtx/compatibility.hpp
+d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtx\../gtc/quaternion.hpp
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\../ext/vector_relational.hpp
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\ext\vector_relational.inl
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\ext\../detail/type_float.hpp
@@ -541,6 +541,8 @@ d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\quaternion.inl
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\epsilon.hpp
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\../detail/setup.hpp
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\epsilon.inl
+d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtx\compatibility.inl
+D:\Users\achan\Projects\hazumu\hazumu\D3D12Raytracing\src\Skinning\..\..\..\Libraries\glm/gtc/type_ptr.hpp
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\../gtc/vec1.hpp
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\../ext/vector_bool1.hpp
 d:\users\achan\projects\hazumu\hazumu\libraries\glm\gtc\../ext/vector_bool1_precision.hpp
