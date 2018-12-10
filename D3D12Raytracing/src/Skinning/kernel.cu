@@ -378,18 +378,20 @@ __global__ void triangleSimKernel(int numVerts, glm::mat4 *transforms, cudaVerte
 	glm::vec3 pos = xm2vec3(v.position);
 	glm::vec3 nor = xm2vec3(v.normal);
 
+	if (nor[1] == 1.0) {
+		glm::vec3 p = twist(triangleCenter, time / 10.f);
+		glm::mat4 transform = glm::translate(p);
+		pos = glm::vec3(transform * glm::vec4(pos, 1.0f));
+		out[i] = makeCUDAVertex(pos, nor);
+	}
+	else {
+		glm::vec3 p = twist(pos, time / 10.f);
+		glm::mat4 transform = glm::mat4(1.f);
+		pos = glm::vec3(transform * glm::vec4(p, 1.0f));
 
-	glm::vec3 p = twist(pos, time / 10.f);
-	float noise = generateNoise(pos.x + time, pos.y + time, pos.z + time);
-	glm::vec3 offset = noise * nor;
-	glm::mat4 transform = glm::translate(offset);
-	transform = glm::mat4(1.f);
-	//glm::mat4 transform = glm::mat4();
-	//glm::mat4 transform = glm::rotate(time, axis);
-	pos = glm::vec3(transform * glm::vec4(p, 1.0f));
-	nor = glm::vec3(transform * glm::vec4(nor, 0.0f));
-
-	out[i] = makeCUDAVertex(pos, nor);
+		out[i] = makeCUDAVertex(pos, nor);
+	}
+	
 	//}
 
 }

@@ -578,7 +578,7 @@ void D3D12RaytracingSimpleLighting::BuildTriangles() {
 	verts[2] = { { 0, 0.5, 0}, {0, 0, 1} };
 	std::vector<Vertex> vertices;
 	std::vector<Index> indices;
-	for (int i = 0; i < NUM_TRIANGLES; ++i) {
+	for (int i = 0; i < NUM_TRIANGLES / 2; ++i) {
 		float r = RADIUS;
 		float phi = randBetween(0, 6.28318530718f);
 		float theta = randBetween(0, 3.14159265359f);
@@ -592,6 +592,28 @@ void D3D12RaytracingSimpleLighting::BuildTriangles() {
 		glm::vec3 v1 = glm::vec3(t * glm::vec4(0.5, 0, 0, 1));
 		glm::vec3 v2 = glm::vec3(t * glm::vec4(0, 0.5, 0, 1));
 		XMFLOAT3 normal = { 0, 0, 1 };
+		vertices.push_back({ { v0.x, v0.y, v0.z }, normal });
+		vertices.push_back({ { v1.x, v1.y, v1.z }, normal });
+		vertices.push_back({ { v2.x, v2.y, v2.z }, normal });
+		indices.push_back(count + 0);
+		indices.push_back(count + 1);
+		indices.push_back(count + 2);
+	}
+
+	for (int i = 0; i < NUM_TRIANGLES / 2; ++i) {
+		float r = RADIUS;
+		float phi = randBetween(0, 6.28318530718f);
+		float theta = randBetween(0, 3.14159265359f);
+		float x = r * glm::sin(theta) * glm::cos(phi);
+		float y = r * glm::sin(theta) * glm::sin(phi);
+		float z = r * glm::cos(theta);
+		auto t = glm::translate(glm::vec3(x, y, z));
+		triangleTransforms.push_back(t);
+		int count = vertices.size();
+		glm::vec3 v0 = glm::vec3(t * glm::vec4(-0.5, 0, 0, 1));
+		glm::vec3 v1 = glm::vec3(t * glm::vec4(0.5, 0, 0, 1));
+		glm::vec3 v2 = glm::vec3(t * glm::vec4(0, 0.5, 0, 1));
+		XMFLOAT3 normal = { 0, 1, 0 };
 		vertices.push_back({ { v0.x, v0.y, v0.z }, normal });
 		vertices.push_back({ { v1.x, v1.y, v1.z }, normal });
 		vertices.push_back({ { v2.x, v2.y, v2.z }, normal });
