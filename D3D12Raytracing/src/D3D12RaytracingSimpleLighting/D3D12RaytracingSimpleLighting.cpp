@@ -258,7 +258,7 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 		auto anim = Animation::LoadFromFile("../../../Resources/boblampclean.md5mesh", m.get()->meshes[i].get());
 		anims.push_back(std::move(anim));
 	}
-	mt = std::make_unique<MorphTarget>("../../../Resources/wolf.json");
+	mt = std::make_unique<MorphTarget>("../../../Resources/horse.json");
 
 	//animPlayer = std::make_unique<AnimationPlayer>(*m->meshes[0]);
 	//animClip = std::make_unique<AnimationClip>(*m->meshes[0], *(anims[0]->m_pScene->mAnimations[0]));
@@ -570,7 +570,7 @@ float randBetween(float min, float max) {
 
 void D3D12RaytracingSimpleLighting::BuildTriangles() {
 	auto device = m_deviceResources->GetD3DDevice();
-	const int NUM_TRIANGLES = 4000;
+	const int NUM_TRIANGLES = 500;
 	const float RADIUS = 150;
 	Vertex verts[3];
 	verts[0] = { {-0.5, 0, 0}, {0, 0, 1} };
@@ -639,6 +639,11 @@ void D3D12RaytracingSimpleLighting::BuildAllGeometry() {
 	UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, masterVertices.size(), sizeof(Vertex));
 	ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
 
+	std::string info;
+	info += "Number of triangles: ";
+	info += std::to_string(masterVertices.size() / 3);
+	info += "\n";
+	OutputDebugString(s2ws(info).c_str());
 }
 
 void D3D12RaytracingSimpleLighting::BuildModelGeometry(Model &m) {

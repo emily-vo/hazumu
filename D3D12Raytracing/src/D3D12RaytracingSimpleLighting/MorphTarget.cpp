@@ -55,7 +55,7 @@ MorphTarget::MorphTarget(const std::string &filename) :
 			float y = v[j + 1].GetFloat();
 			float z = v[j + 2].GetFloat();
 			XMFLOAT3 pos(x, y, z);
-			XMFLOAT3 nor(0, 0, 1);
+			XMFLOAT3 nor(1, 0, 0);
 			targetVertices.push_back({ pos, nor });
 		}
 		targets.push_back(std::move(targetVertices));
@@ -105,7 +105,7 @@ MorphTarget::MorphTarget(const std::string &filename) :
 }
 
 void MorphTarget::Update(float time) {
-	const bool UseCPU = true;
+	const bool UseCPU = false;
 	if (UseCPU) {
 		UpdateCPU(time);
 	} else {
