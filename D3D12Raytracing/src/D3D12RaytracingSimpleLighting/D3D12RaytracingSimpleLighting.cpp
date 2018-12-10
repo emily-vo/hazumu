@@ -570,7 +570,7 @@ float randBetween(float min, float max) {
 
 void D3D12RaytracingSimpleLighting::BuildTriangles() {
 	auto device = m_deviceResources->GetD3DDevice();
-	const int NUM_TRIANGLES = 2000;
+	const int NUM_TRIANGLES = 5000;
 	const float RADIUS = 150;
 	Vertex verts[3];
 	verts[0] = { {-0.5, 0, 0}, {0, 0, 1} };
