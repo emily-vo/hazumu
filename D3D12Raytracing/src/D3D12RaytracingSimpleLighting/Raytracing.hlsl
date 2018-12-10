@@ -201,13 +201,29 @@ float4 CalculateDiffuseLighting(float3 hitPosition, float3 normal)
 
     // Diffuse contribution.
     float fNDotL = abs(dot(pixelToLight, normal));
+	float3 a, b, c, d;
+	float3 color; 
+	if (normal.z == 1.0) {
+		a = float3(0.5, 0.5, 0.5);
+		b = float3(0.5, 0.5, 0.5);
+		c = float3(1.0, 1.0, 1.0);
+		d = float3(0.00, 0.33, 0.67);
+		float s = 32.0;
+		color = palette(generateNoise(hitPosition.x / s, hitPosition.y / s, hitPosition.z / s), a, b, c, d);
 
-	float3 a = float3(0.5, 0.5, 0.5);
-	float3 b = float3(0.5, 0.5, 0.5);
-	float3 c = float3(1.0, 1.0, 1.0);
-	float3 d = float3(0.00, 0.33, 0.67);
-	float s = 2.0;
-	float3 color = palette(generateNoise(hitPosition.x / s, hitPosition.y / s, hitPosition.z / s), a, b, c, d);
+		//color = float3(1.0, 0., 0.);
+	}
+	else {
+		a = float3(0.920, 1.020, 0.920);
+		b = float3(0.555, 0.555, 0.555);
+		c = float3(1.0, 1.0, 1.0);
+		d = float3(0.000, 0.333, 0.667);
+		float s = 32.0;
+		color = palette(generateNoise(hitPosition.x / s, hitPosition.y / s, hitPosition.z / s), a, b, c, d);
+	}
+	
+	
+	
 	float4 color4 = float4(color[0], color[1], color[2], 1.0);
 	return color4;
 }
@@ -269,7 +285,7 @@ void MyClosestHitShader(inout RayPayload payload, in MyAttributes attr)
     // This is redundant and done for illustration purposes 
     // as all the per-vertex normals are the same and match triangle's normal in this sample. 
     float3 triangleNormal = HitAttribute(vertexNormals, attr);
-	triangleNormal = cross(vertexPos[2] - vertexPos[1], vertexPos[1] - vertexPos[0]);
+	//triangleNormal = cross(vertexPos[2] - vertexPos[1], vertexPos[1] - vertexPos[0]);
 
     float4 diffuseColor = CalculateDiffuseLighting(hitPosition, triangleNormal);
     float4 color = diffuseColor;
