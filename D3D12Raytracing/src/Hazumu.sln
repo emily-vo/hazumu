@@ -5,7 +5,12 @@ VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FallbackLayer", "..\..\Libraries\D3D12RaytracingFallback\src\FallbackLayer.vcxproj", "{4BE280A6-1066-41CA-ACDD-6BB7E532508B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "D3D12RaytracingSimpleLighting", "D3D12RaytracingSimpleLighting\D3D12RaytracingSimpleLighting.vcxproj", "{A0848C98-F5AA-431C-9E76-7F1E7EFA368C}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Hazumu", "D3D12RaytracingSimpleLighting\D3D12RaytracingSimpleLighting.vcxproj", "{A0848C98-F5AA-431C-9E76-7F1E7EFA368C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{ED623E80-37A4-41E0-BB82-00D6451EF29E} = {ED623E80-37A4-41E0-BB82-00D6451EF29E}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Skinning", "Skinning\Skinning.vcxproj", "{ED623E80-37A4-41E0-BB82-00D6451EF29E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,6 +31,12 @@ Global
 		{A0848C98-F5AA-431C-9E76-7F1E7EFA368C}.Profile|x64.Build.0 = Release|x64
 		{A0848C98-F5AA-431C-9E76-7F1E7EFA368C}.Release|x64.ActiveCfg = Release|x64
 		{A0848C98-F5AA-431C-9E76-7F1E7EFA368C}.Release|x64.Build.0 = Release|x64
+		{ED623E80-37A4-41E0-BB82-00D6451EF29E}.Debug|x64.ActiveCfg = Debug|x64
+		{ED623E80-37A4-41E0-BB82-00D6451EF29E}.Debug|x64.Build.0 = Debug|x64
+		{ED623E80-37A4-41E0-BB82-00D6451EF29E}.Profile|x64.ActiveCfg = Release|x64
+		{ED623E80-37A4-41E0-BB82-00D6451EF29E}.Profile|x64.Build.0 = Release|x64
+		{ED623E80-37A4-41E0-BB82-00D6451EF29E}.Release|x64.ActiveCfg = Release|x64
+		{ED623E80-37A4-41E0-BB82-00D6451EF29E}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

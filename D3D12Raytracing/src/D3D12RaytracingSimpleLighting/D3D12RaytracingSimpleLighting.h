@@ -17,6 +17,7 @@
 #include "Mesh.h"
 #include "Model.h"
 #include "Animation.h"
+#include "cudaSkinning.h"
 #define _WIN32_WINNT 0x600
 #include <stdio.h>
 
@@ -186,6 +187,7 @@ private:
 	float prevTime = 0;
 	float elapsedTime = 0;
 	std::vector<std::unique_ptr<Animation>> anims;
+	cudaVertex *newVertices;
 
 	// Model data
 	std::unique_ptr<Model> m;
@@ -239,6 +241,7 @@ private:
 		_In_ ID3D11Device* device, _Outptr_ ID3DBlob** blob);
 	int CompileComputeShaders();
 	void Skin();
+	void GPUFakeSkin(float);
 };
 
 inline std::wstring s2ws(const std::string &s) {

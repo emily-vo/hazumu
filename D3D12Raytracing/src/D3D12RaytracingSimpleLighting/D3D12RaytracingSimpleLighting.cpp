@@ -14,6 +14,8 @@
 #include "DirectXRaytracingHelper.h"
 #include "CompiledShaders\Raytracing.hlsl.h"
 
+#include "cudaSkinning.h"
+
 using namespace std;
 using namespace DX;
 
@@ -91,22 +93,6 @@ void D3D12RaytracingSimpleLighting::OnInit()
 
     CreateDeviceDependentResources();
     CreateWindowSizeDependentResources();
-
-	ComPtr<ID3DBlob> computeShader;
-	ThrowIfFailed(D3DCompileFromFile(L"ExampleCompute.hlsl",
-		nullptr, nullptr, "main", "cs_5_0", 0, 0, &computeShader, nullptr));
-
-	// Describe and create the compute pipeline state object (PSO).
-	D3D12_COMPUTE_PIPELINE_STATE_DESC computePsoDesc = {};
-	computePsoDesc.pRootSignature = m_computeRootSignature.Get();
-	computePsoDesc.CS = CD3DX12_SHADER_BYTECODE(computeShader.Get());
-
-	auto device = m_deviceResources->GetD3DDevice();
-	//ThrowIfFailed();
-	HRESULT res = device->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&m_computeState));
-	ThrowIfFailed(res);
-	NAME_D3D12_OBJECT(m_computeState);
-
 
 	//CompileComputeShaders();
 }
@@ -263,7 +249,7 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	m = Model::LoadFromFile("../../../Resources/BetaCharacter.fbx", "Beta");
+	m = Model::LoadFromFile("../../../Resources/wahoo.obj", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
 	for (int i = 0; i < m.get()->meshes.size(); i++) {
 		auto anim = Animation::LoadFromFile("../../../Resources/skinning_test.fbx", m.get()->meshes[i].get());
@@ -332,28 +318,6 @@ void D3D12RaytracingSimpleLighting::CreateRootSignatures()
         localRootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE;
         SerializeAndCreateRaytracingRootSignature(localRootSignatureDesc, &m_raytracingLocalRootSignature);
     }
-
-	// Compute root signature
-    {
-		CD3DX12_DESCRIPTOR_RANGE1 ranges[2];
-		ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
-		ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_DATA_VOLATILE);
-
-		CD3DX12_ROOT_PARAMETER1 rootParameters[ComputeRootParametersCount];
-		rootParameters[ComputeRootCBV].InitAsConstantBufferView(0, 0, D3D12_ROOT_DESCRIPTOR_FLAG_DATA_STATIC, D3D12_SHADER_VISIBILITY_ALL);
-		rootParameters[ComputeRootSRVTable].InitAsDescriptorTable(1, &ranges[0], D3D12_SHADER_VISIBILITY_ALL);
-		rootParameters[ComputeRootUAVTable].InitAsDescriptorTable(1, &ranges[1], D3D12_SHADER_VISIBILITY_ALL);
-
-		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC computeRootSignatureDesc;
-		computeRootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr);
-
-		ComPtr<ID3DBlob> signature;
-		ComPtr<ID3DBlob> error;
-		//ThrowIfFailed(D3DX12SerializeVersionedRootSignature(&computeRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1_1, &signature, &error));
-		//ThrowIfFailed(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&m_computeRootSignature)));
-		//NAME_D3D12_OBJECT(m_computeRootSignature);
-    }
-
 }
 
 // Create raytracing device and command list.
@@ -618,6 +582,7 @@ void D3D12RaytracingSimpleLighting::BuildModelGeometry(Model &m) {
 	UINT descriptorIndexVB = CreateBufferSRV(&m_vertexBuffer, masterVertices.size(), sizeof(Vertex));
 	ThrowIfFalse(descriptorIndexVB == descriptorIndexIB + 1, L"Vertex Buffer descriptor index must follow that of Index Buffer descriptor index!");
 
+	newVertices = new cudaVertex[masterVertices.size()];
 }
 
 void D3D12RaytracingSimpleLighting::SwapGeometryBuffers() {
@@ -986,6 +951,13 @@ void D3D12RaytracingSimpleLighting::FakeSkinTest() {
 	AllocateUploadBuffer(device, newVertices.data(), newVertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
 }
 
+void D3D12RaytracingSimpleLighting::GPUFakeSkin(float elapsedTime) {
+	cudaFakeSkin(m->meshes[0]->vertices.size(), reinterpret_cast<cudaVertex *>(m->meshes[0]->vertices.data()), newVertices, elapsedTime);
+	auto device = m_deviceResources->GetD3DDevice();
+	Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
+	AllocateUploadBuffer(device, updatedVerts, m->meshes[0]->vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+}
+
 // Build shader tables.
 // This encapsulates all shader records - shaders and the arguments for their local root signatures.
 void D3D12RaytracingSimpleLighting::BuildShaderTables()
@@ -1229,7 +1201,12 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
     auto prevFrameIndex = m_deviceResources->GetPreviousFrameIndex();
 
 	//FakeSkinTest();
-	Skin();
+	//Skin();
+	static float elapsed = 0;
+	{
+		GPUFakeSkin(elapsed);
+	}
+	elapsed += m_timer.GetElapsedSeconds();
     UpdateBottomLevelAS();
 	UpdateTopLevelAS();
 

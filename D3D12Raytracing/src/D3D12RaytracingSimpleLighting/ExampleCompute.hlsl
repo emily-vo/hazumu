@@ -1,5 +1,3 @@
-
-
 struct Bone {
 	float4x4 pose;
 };
