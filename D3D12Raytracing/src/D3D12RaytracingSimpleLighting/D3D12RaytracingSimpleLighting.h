@@ -244,6 +244,7 @@ private:
 	int CompileComputeShaders();
 	void Skin();
 	void GPUFakeSkin(float);
+	void GPUSkin(float);
 	std::unique_ptr<AnimationPlayer> animPlayer;
 	std::unique_ptr<AnimationClip> animClip;
 };

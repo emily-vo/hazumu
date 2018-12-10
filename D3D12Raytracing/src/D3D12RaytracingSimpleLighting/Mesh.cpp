@@ -51,7 +51,6 @@ std::unique_ptr<Mesh> Mesh::LoadFromAiMesh(aiMesh *mesh) {
 
 	// Load skeleton information
 	m->mBones.resize(m->vertices.size());
-	//m->m_BoneInfo.resize(currMesh->mNumBones);
 	for (UINT i = 0; i < currMesh->mNumBones; i++) {
 		UINT BoneIndex = 0;
 		String BoneName(currMesh->mBones[i]->mName.data);

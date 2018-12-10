@@ -248,10 +248,10 @@ void D3D12RaytracingSimpleLighting::CreateDeviceDependentResources()
 
     // Build geometry to be used in the sample.
     //BuildGeometry();
-	m = Model::LoadFromFile("../../../Resources/OneSkin.fbx", "Beta");
+	m = Model::LoadFromFile("../../../Resources/BaseMesh_Anim.fbx", "Beta");
 	//auto m = Mesh::LoadFromFile("../../../Resources/sphere.obj", "Sphere");
 	for (int i = 0; i < m.get()->meshes.size(); i++) {
-		auto anim = Animation::LoadFromFile("../../../Resources/OneSkin.fbx", m.get()->meshes[i].get());
+		auto anim = Animation::LoadFromFile("../../../Resources/BaseMesh_Anim.fbx", m.get()->meshes[i].get());
 		anims.push_back(std::move(anim));
 	}
 
@@ -955,10 +955,32 @@ void D3D12RaytracingSimpleLighting::FakeSkinTest() {
 }
 
 void D3D12RaytracingSimpleLighting::GPUFakeSkin(float elapsedTime) {
+
 	cudaFakeSkin(m->meshes[0]->vertices.size(), reinterpret_cast<cudaVertex *>(m->meshes[0]->vertices.data()), newVertices, elapsedTime);
 	auto device = m_deviceResources->GetD3DDevice();
 	Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
 	AllocateUploadBuffer(device, updatedVerts, m->meshes[0]->vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+}
+
+void D3D12RaytracingSimpleLighting::GPUSkin(float elapsedTime) {
+
+	for (int i = 0; i < anims.size(); i++) {
+		auto &a = anims[i];
+		std::vector<XMMATRIX> boneTransforms;
+		a->BoneTransform(elapsedTime, boneTransforms);
+		std::vector<XMFLOAT4X4> transforms;
+		for (XMMATRIX mat : boneTransforms) {
+			XMFLOAT4X4 other;
+			XMStoreFloat4x4(&other, mat);
+			transforms.push_back(other);
+		}
+
+
+		cudaSkin(m->meshes[0]->vertices.size(), transforms.size(), transforms.data(), reinterpret_cast<cudaVertexBoneData*>(m->meshes[i]->mBones.data()), reinterpret_cast<cudaVertex *>(m->meshes[0]->vertices.data()), newVertices, elapsedTime);
+		auto device = m_deviceResources->GetD3DDevice();
+		Vertex *updatedVerts = reinterpret_cast<Vertex *>(newVertices);
+		AllocateUploadBuffer(device, updatedVerts, m->meshes[0]->vertices.size() * sizeof(Vertex), &m_vertexBuffer.resource);
+	}
 }
 
 // Build shader tables.
@@ -1243,7 +1265,8 @@ void D3D12RaytracingSimpleLighting::OnUpdate()
 	//Skin();
 	static float elapsed = 0;
 	{
-		GPUFakeSkin(elapsed);
+		//GPUFakeSkin(elapsed);
+		GPUSkin(elapsed);
 	}
 	elapsed += m_timer.GetElapsedSeconds();
     UpdateBottomLevelAS();
