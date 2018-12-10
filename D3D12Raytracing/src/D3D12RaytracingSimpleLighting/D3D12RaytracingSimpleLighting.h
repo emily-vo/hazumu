@@ -24,6 +24,8 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 
+#include "AnimationPlayer.h"
+
 #pragma comment(lib,"d3d11.lib")
 #pragma comment(lib,"d3dcompiler.lib")
 
@@ -242,6 +244,8 @@ private:
 	int CompileComputeShaders();
 	void Skin();
 	void GPUFakeSkin(float);
+	std::unique_ptr<AnimationPlayer> animPlayer;
+	std::unique_ptr<AnimationClip> animClip;
 };
 
 inline std::wstring s2ws(const std::string &s) {

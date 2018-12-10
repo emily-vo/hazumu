@@ -3,7 +3,7 @@
 #include "stdafx.h"
 #include "RaytracingHlslCompat.h"
 #include <assimp/scene.h>
-
+#include "Bone.h"
 
 using namespace DirectX;
 using String = std::string;
@@ -25,6 +25,9 @@ public:
 		return mat;
 	}
 
+	SceneNode* RootNode();
+	SceneNode* BuildSkeleton(aiNode& node, SceneNode* parentSceneNode);
+
 	String name;
 	std::vector<VertexBoneData> mBones;
 	std::vector<Vertex> vertices;
@@ -34,4 +37,10 @@ public:
 	std::vector<BoneInfo> m_BoneInfo;
 	XMMATRIX m_GlobalInverseTransform;
 	int m_NumBones;
+
+
+	std::vector<Bone*> m_bones;
+	std::unordered_map<String, UINT> mBoneIndexMapping;
+	SceneNode *mRootNode;
+	std::vector<BoneVertexWeights> mBoneWeights;
 };
