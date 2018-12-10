@@ -1,5 +1,6 @@
 # Hazumu
 Alexander Chan and Emily Vo
+![](img/hazumu.gif)
 
 ## Goal
 Analyzing dynamic animated scenes with DXR.
@@ -12,7 +13,13 @@ We initially used assimp to read in fbx files containig skeletons and animations
 In the end, we were able to raytrace an animated mesh. We added a large triangle sim around the animated mesh to analyze how fast acceleration structure updates take in DXR.
 
 ## Performance
+The following analysis was performed on a GTX 1080 @ 1620 MHz 8GB and an i7-5820k @ 3.70 GHz 16GB.
 
+![](img/cpu-wolf.png)
+
+![](img/gpu-wolf.png)
+
+Above are timing graphs for raytracing the skinned wolf. As expected, GPU skinning is faster than CPU skinning. However, refitting the acceleration structure is also slightly faster. Doubling the number of triangles in the scene roughly doubles the time taken to update the acceleration structure. The only benchmark to hit the target of 60fps was the fewest number of triangles, 664. This is also with no lighting calculation.
 
 ## Requirements
 * Windows 10
