@@ -91,6 +91,108 @@ inline void GenerateCameraRay(uint2 index, out float3 origin, out float3 directi
     origin = g_sceneCB.cameraPosition.xyz;
     direction = normalize(world.xyz - origin);
 }
+float fract(float a) {
+	float x = floor(a);
+	return a - x;
+}
+float lerp(float a, float b, float t) {
+	return a * (1.0 - t) + b * t;
+}
+
+float4 lerp(float4 a, float4 b, float t) {
+	return a * (1.0 - t) + b * t;
+}
+
+float cerp(float a, float b, float t) {
+	float cos_t = (1.0 - cos(t*3.14159)) * 0.5;
+	return lerp(a, b, cos_t);
+}
+
+float3 palette(float t, float3 a, float3 b, float3 c, float3 d)
+{
+	return a + b * cos(6.28318*(c*t + d));
+}
+
+float random(float a, float b, float c) {
+	return fract(sin(dot(float3(a, b, c), float3(12.9898, 78.233, 578.233)))*43758.5453);
+}
+
+
+float interpolateNoise(float x, float y, float z) {
+	float x0, y0, z0, x1, y1, z1;
+
+	// Find the grid voxel that this point falls in
+	x0 = floor(x);
+	y0 = floor(y);
+	z0 = floor(z);
+
+	x1 = x0 + 1.0;
+	y1 = y0 + 1.0;
+	z1 = z0 + 1.0;
+
+	// Generate noise at each of the 8 points
+	float FUL, FUR, FLL, FLR, BUL, BUR, BLL, BLR;
+
+	// front upper left
+	FUL = random(x0, y1, z1);
+
+	// front upper right
+	FUR = random(x1, y1, z1);
+
+	// front lower left
+	FLL = random(x0, y0, z1);
+
+	// front lower right
+	FLR = random(x1, y0, z1);
+
+	// back upper left
+	BUL = random(x0, y1, z0);
+
+	// back upper right
+	BUR = random(x1, y1, z0);
+
+	// back lower left
+	BLL = random(x0, y0, z0);
+
+	// back lower right
+	BLR = random(x1, y0, z0);
+
+	// Find the interpolate t values
+	float n0, n1, m0, m1, v;
+	float tx = fract(x - x0);
+	float ty = fract(y - y0);
+	float tz = fract(z - z0);
+	tx = (x - x0);
+	ty = (y - y0);
+	tz = (z - z0);
+
+	// interpolate along x and y for back
+	n0 = cerp(BLL, BLR, tx);
+	n1 = cerp(BUL, BUR, tx);
+	m0 = cerp(n0, n1, ty);
+
+	// interpolate along x and y for front
+	n0 = cerp(FLL, FLR, tx);
+	n1 = cerp(FUL, FUR, tx);
+	m1 = cerp(n0, n1, ty);
+
+	// interpolate along z
+	v = cerp(m0, m1, tz);
+
+	return v;
+}
+
+float generateNoise(float x, float y, float z) {
+	float total = 0.0;
+	float persistence = 1.0 / 2.0;
+	int its = 0;
+	for (int i = 0; i < 10; i++) {
+		float freq = pow(2.0, float(i));
+		float ampl = pow(persistence, float(i));
+		total += interpolateNoise(freq*x, freq*y, freq*z)*ampl;
+	}
+	return total;
+}
 
 // Diffuse lighting calculation.
 float4 CalculateDiffuseLighting(float3 hitPosition, float3 normal)
@@ -98,10 +200,18 @@ float4 CalculateDiffuseLighting(float3 hitPosition, float3 normal)
     float3 pixelToLight = normalize(g_sceneCB.lightPosition.xyz - hitPosition);
 
     // Diffuse contribution.
-    float fNDotL = max(0.0f, dot(pixelToLight, normal));
-	
-    return g_cubeCB.albedo * g_sceneCB.lightDiffuseColor * fNDotL;
+    float fNDotL = abs(dot(pixelToLight, normal));
+
+	float3 a = float3(0.5, 0.5, 0.5);
+	float3 b = float3(0.5, 0.5, 0.5);
+	float3 c = float3(1.0, 1.0, 1.0);
+	float3 d = float3(0.00, 0.33, 0.67);
+	float s = 2.0;
+	float3 color = palette(generateNoise(hitPosition.x / s, hitPosition.y / s, hitPosition.z / s), a, b, c, d);
+	float4 color4 = float4(color[0], color[1], color[2], 1.0);
+	return color4;
 }
+
 
 [shader("raygeneration")]
 void MyRaygenShader()
@@ -122,7 +232,7 @@ void MyRaygenShader()
     ray.TMin = 0.001;
     ray.TMax = 10000.0;
     RayPayload payload = { float4(0, 0, 0, 0) };
-    TraceRay(Scene, RAY_FLAG_CULL_BACK_FACING_TRIANGLES, ~0, 0, 1, 0, ray, payload);
+    TraceRay(Scene, RAY_FLAG_NONE, ~0, 0, 1, 0, ray, payload);
 
     // Write the raytraced color to the output texture.
     RenderTarget[DispatchRaysIndex().xy] = payload.color;
@@ -162,7 +272,7 @@ void MyClosestHitShader(inout RayPayload payload, in MyAttributes attr)
 	triangleNormal = cross(vertexPos[2] - vertexPos[1], vertexPos[1] - vertexPos[0]);
 
     float4 diffuseColor = CalculateDiffuseLighting(hitPosition, triangleNormal);
-    float4 color = g_sceneCB.lightAmbientColor + diffuseColor;
+    float4 color = diffuseColor;
 
     payload.color = color;
 }
@@ -170,7 +280,7 @@ void MyClosestHitShader(inout RayPayload payload, in MyAttributes attr)
 [shader("miss")]
 void MyMissShader(inout RayPayload payload)
 {
-    float4 background = float4(0.2f, 0.2f, 0.2f, 1.0f);
+    float4 background = float4(0.0f, 0.0f, 0.0f, 1.0f);
     payload.color = background;
 }
 

@@ -251,8 +251,16 @@ private:
 	void Skin();
 	void GPUFakeSkin(float);
 	void GPUSkin(float);
+	void GPUTriangleSim(float);
 	std::unique_ptr<AnimationPlayer> animPlayer;
 	std::unique_ptr<AnimationClip> animClip;
+	void BuildTriangles();
+	std::vector<glm::mat4> triangleTransforms;
+	std::vector<Vertex> triangleVerts;
+	std::vector<Index> triangleIdx;
+	glm::mat4 *transformsOut;
+	void BuildAllGeometry();
+	void UpdateAllGeometry();
 };
 
 inline std::wstring s2ws(const std::string &s) {

@@ -23,8 +23,9 @@
  }                                                                 \
 }
 
-
 __global__ void fakeSkinKernel(int numVerts, cudaVertex *in, cudaVertex *out, const float time);
+__global__ void triangleTransformKernel(int numTriangles, glm::mat4 *transformsIn, glm::mat4 *transformsOut, const float time);
+__global__ void triangleSimKernel(int numVerts, glm::mat4 *transforms, cudaVertex *in, cudaVertex *out, const float time);
 __global__ void skinKernel(int numVerts, glm::mat4 *transforms, cudaVertexBoneData *bones, cudaVertex *in, cudaVertex *out, const float time);
 __global__ void morphTargetKernel(int numVerts, cudaVertex *target1, cudaVertex *target2, cudaVertex *out, const float alpha);
 void cudaFakeSkin(int numVerts, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time) {
@@ -95,6 +96,33 @@ void cudaMorph(int numVerts, cudaVertex *target1, cudaVertex *target2, cudaVerte
 	cudaFree(dv_odata);
 }
 
+void triangleSim(int numVerts, glm::mat4 *transformsIn, glm::mat4 *transformsOut, cudaVertex *vertsIn, cudaVertex *vertsOut, const float time) {
+
+	int blockSize = 128;
+	dim3 blocksPerGrid((numVerts + blockSize - 1) / blockSize);
+	dim3 threadsPerBlock(blockSize);
+
+	cudaVertex *dv_idata, *dv_odata;
+
+	cudaMalloc((void **)&dv_idata, numVerts * sizeof(cudaVertex));
+	cudaMalloc((void **)&dv_odata, numVerts * sizeof(cudaVertex));
+	cudaMemcpy(dv_idata, vertsIn, numVerts * sizeof(cudaVertex), cudaMemcpyHostToDevice);
+
+
+	glm::mat4 *dv_itransforms, *dv_otransforms;
+	cudaMalloc((void **)&dv_itransforms, (numVerts / 3) * sizeof(glm::mat4));
+	cudaMalloc((void **)&dv_otransforms, (numVerts / 3) * sizeof(glm::mat4));
+	cudaMemcpy(dv_itransforms, transformsIn, (numVerts / 3) * sizeof(glm::mat4), cudaMemcpyHostToDevice);
+	triangleTransformKernel << <blocksPerGrid, threadsPerBlock >> > (numVerts / 3, dv_itransforms, dv_otransforms, time);
+	triangleSimKernel << <blocksPerGrid, threadsPerBlock >> > (numVerts, dv_itransforms, dv_idata, dv_odata, time);
+
+	cudaMemcpy(vertsOut, dv_odata, numVerts * sizeof(cudaVertex), cudaMemcpyDeviceToHost);
+	cudaMemcpy(transformsOut, dv_otransforms, numVerts / 3 * sizeof(glm::mat4), cudaMemcpyDeviceToHost);
+	cudaFree(dv_idata);
+	cudaFree(dv_odata);
+	cudaFree(dv_itransforms);
+	cudaFree(dv_otransforms);
+}
 
 __forceinline__
 __device__ __host__
@@ -151,11 +179,12 @@ __global__ void fakeSkinKernel(int numVerts, cudaVertex *in, cudaVertex *out, co
 	int i = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (i >= numVerts) { return; }
 	auto &v = in[i];
-	glm::vec3 pos = xm2vec3(v.position);
-	glm::vec3 nor = xm2vec3(v.normal);
-	auto rot = glm::rotate((time / 24.f) * 360.f, glm::vec3(0, 1, 0));
-	pos = glm::vec3(rot * glm::vec4(pos, 1.f));
-	out[i] = makeCUDAVertex(pos, nor);
+	//glm::vec3 pos = xm2vec3(v.position);
+	//glm::vec3 nor = xm2vec3(v.normal);
+	//auto rot = glm::rotate((time / 24.f) * 360.f, glm::vec3(0, 1, 0));
+	//rot = glm::mat4(0.0f);
+	//pos = glm::vec3(rot * glm::vec4(pos, 1.f));
+	out[i] = in[i];
 }
 
 __global__ void skinKernel(int numVerts, glm::mat4 *transforms, cudaVertexBoneData *bones, cudaVertex *in, cudaVertex *out, const float time) {
@@ -181,7 +210,7 @@ __global__ void skinKernel(int numVerts, glm::mat4 *transforms, cudaVertexBoneDa
 	out[i] = makeCUDAVertex(pos, nor);
 }
 
-__global__ void morphTargetKernel(int numVerts, cudaVertex *target1, cudaVertex *target2, cudaVertex *out, float alpha) {
+	__global__ void morphTargetKernel(int numVerts, cudaVertex *target1, cudaVertex *target2, cudaVertex *out, float alpha) {
 	int i = threadIdx.x + (blockIdx.x * blockDim.x);
 	if (i >= numVerts) { return; }
 	auto &v1 = target1[i];
@@ -193,4 +222,174 @@ __global__ void morphTargetKernel(int numVerts, cudaVertex *target1, cudaVertex 
 	glm::vec3 pos = glm::lerp(pos1, pos2, alpha);
 	glm::vec3 nor = glm::lerp(nor1, nor2, alpha);
 	out[i] = makeCUDAVertex(pos, nor);
+}
+__global__ void triangleTransformKernel(int numTriangles, glm::mat4 *transformsIn, glm::mat4 *transformsOut, const float time) {
+	int i = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (i >= numTriangles) { return; }
+	//auto rot = glm::rotate(5, glm::vec3(0, 1, 0));
+	glm::vec3 t = glm::vec3(0.1, 0, 0);
+	transformsOut[i] = transformsIn[i];
+	//transformsOut[i] = glm::translate(transformsIn[i], t);
+	//transformsOut[i] = glm::rotate(transformsIn[i], time, glm::vec3(glm::normalize(transformsIn[i][3])));
+}
+
+//Twist function from  http://www.iquilezles.org/www/articles/distfunctions/distfunctions.htm
+
+
+__forceinline__ __device__  glm::vec3 invertSpace(glm::vec3 p, float s)
+{
+	return s * p / glm::dot(p, p);
+}
+__forceinline__ __device__ glm::vec3 twist(glm::vec3 p, float time) {
+	float t = glm::sin(time) * p.y;
+	float ct = glm::cos(t) * 1.0;
+	float st = glm::sin(t) * 1.0;
+
+	glm::vec3 pos = p;
+
+	pos.x = p.x * ct - p.z * st;
+	pos.z = p.x * st + p.z * ct;
+	return pos;
+}
+
+__forceinline__ __device__ float fract(float a) {
+	float x = floor(a);
+	return a - x;
+}
+
+
+__forceinline__ __device__ float lerp(float a, float b, float t) {
+	return a * (1.0f - t) + b * t;
+}
+
+__forceinline__ __device__  glm::vec4 lerp(glm::vec4 a, glm::vec4 b, float t) {
+	return a * (1.0f - t) + b * t;
+}
+
+__forceinline__ __device__  float cerp(float a, float b, float t) {
+	float cos_t = (1.0f - cos(t*3.14159f)) * 0.5f;
+	return lerp(a, b, cos_t);
+}
+
+__forceinline__ __device__ glm::vec3 palette(float t, glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d)
+{
+	return a + b * cos(6.28318f *(c*t + d));
+}
+
+__forceinline__ __device__ float random(float a, float b, float c) {
+	return fract(glm::sin(glm::dot(glm::vec3(a, b, c), glm::vec3(12.9898, 78.233, 578.233)))*43758.5453);
+}
+
+
+__forceinline__ __device__ float interpolateNoise(float x, float y, float z) {
+	float x0, y0, z0, x1, y1, z1;
+
+	// Find the grid voxel that this point falls in
+	x0 = floor(x);
+	y0 = floor(y);
+	z0 = floor(z);
+
+	x1 = x0 + 1.0;
+	y1 = y0 + 1.0;
+	z1 = z0 + 1.0;
+
+	// Generate noise at each of the 8 points
+	float FUL, FUR, FLL, FLR, BUL, BUR, BLL, BLR;
+
+	// front upper left
+	FUL = random(x0, y1, z1);
+
+	// front upper right
+	FUR = random(x1, y1, z1);
+
+	// front lower left
+	FLL = random(x0, y0, z1);
+
+	// front lower right
+	FLR = random(x1, y0, z1);
+
+	// back upper left
+	BUL = random(x0, y1, z0);
+
+	// back upper right
+	BUR = random(x1, y1, z0);
+
+	// back lower left
+	BLL = random(x0, y0, z0);
+
+	// back lower right
+	BLR = random(x1, y0, z0);
+
+	// Find the interpolate t values
+	float n0, n1, m0, m1, v;
+	float tx = fract(x - x0);
+	float ty = fract(y - y0);
+	float tz = fract(z - z0);
+	tx = (x - x0);
+	ty = (y - y0);
+	tz = (z - z0);
+
+	// interpolate along x and y for back
+	n0 = cerp(BLL, BLR, tx);
+	n1 = cerp(BUL, BUR, tx);
+	m0 = cerp(n0, n1, ty);
+
+	// interpolate along x and y for front
+	n0 = cerp(FLL, FLR, tx);
+	n1 = cerp(FUL, FUR, tx);
+	m1 = cerp(n0, n1, ty);
+
+	// interpolate along z
+	v = cerp(m0, m1, tz);
+
+	return v;
+}
+
+__forceinline__ __device__ float generateNoise(float x, float y, float z) {
+	float total = 0.0;
+	float persistence = 1.0 / 2.0;
+	int its = 0;
+	float scale = 2.0;
+	float freq = 1.0;
+	float ampl = 1.0;
+	for (int i = 0; i < 32; i++) {
+		freq *= scale;
+		ampl *= persistence;
+		total += interpolateNoise(freq*x, freq*y, freq*z)*ampl;
+	}
+	return total;
+}
+
+
+__global__ void triangleSimKernel(int numVerts, glm::mat4 *transforms, cudaVertex *in, cudaVertex *out, const float time) {
+	int i = threadIdx.x + (blockIdx.x * blockDim.x);
+	if (i >= numVerts) { return; }
+	int triangleIdx = i / 3;
+	int firstPos = triangleIdx * 3;
+	glm::vec3 triangleCenter = glm::vec3(0.f);
+	for (int j = 0; j < 3; j++) {
+		auto &v = in[firstPos + j];
+		glm::vec3 p = xm2vec3(v.position);
+		triangleCenter += p;
+	}
+	triangleCenter /= 3.0f;
+	//for (int j = 0; j < 3; ++j) {
+	auto &v = in[i];
+	glm::vec3 pos = xm2vec3(v.position);
+	glm::vec3 nor = xm2vec3(v.normal);
+
+
+	glm::vec3 p = twist(pos, time / 10.f);
+	float noise = generateNoise(pos.x + time, pos.y + time, pos.z + time);
+	glm::vec3 offset = noise * nor;
+	glm::mat4 transform = glm::translate(offset);
+	transform = glm::mat4(1.f);
+	//glm::mat4 transform = glm::mat4();
+	//glm::mat4 transform = glm::rotate(time, axis);
+	pos = glm::vec3(transform * glm::vec4(p, 1.0f));
+	nor = glm::vec3(transform * glm::vec4(nor, 0.0f));
+
+	out[i] = makeCUDAVertex(pos, nor);
+	//}
+
 }
